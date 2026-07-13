@@ -1,0 +1,14 @@
+recordcount=1000
+operationcount=1000
+workload=site.ycsb.workloads.ScatteredWorkload
+
+readallfields=false
+writeallfields=false
+
+readproportion=0.95
+updateproportion=0.05
+scanproportion=0
+insertproportion=0
+
+requestdistribution=zipfian
+

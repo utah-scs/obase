@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>site.ycsb</groupId>
+        <artifactId>binding-parent</artifactId>
+        <version>0.18.0-SNAPSHOT</version>
+        <relativePath>../binding-parent</relativePath>
+    </parent>
+
+    <artifactId>crest-binding</artifactId>
+    <name>Crest DB Binding</name>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <!-- Core YCSB dependency -->
+        <dependency>
+            <groupId>site.ycsb</groupId>
+            <artifactId>core</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Add any additional dependencies required for your client -->
+        <!-- Since CrestClient communicates directly over sockets, no additional dependencies are assumed here -->
+    </dependencies>
+</project>

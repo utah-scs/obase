@@ -1,0 +1,31 @@
+#include "basic.h"
+#include <cstdint>
+#include <cstring>
+
+// Typed pointer usage: compiles unchanged after conversion through
+// Guide<char>'s conversion operator.
+size_t nameLength(Item *it)
+{
+    return strlen(it->name);
+}
+
+// Cast to a non-void pointer type: needs the raw address materialized.
+const char *asText(Item *it)
+{
+    return (const char *)it->payload;
+}
+
+// Cast to an integer type: same repair.
+uintptr_t asWord(Item *it)
+{
+    return (uintptr_t)it->payload;
+}
+
+// Read-old / publish-new / free-old update; no repair needed anywhere.
+void setPayload(Item *it, void *fresh, size_t n)
+{
+    void *old = it->payload;
+    it->payload = fresh;
+    it->payload_len = n;
+    memcpy(it->payload, old, n < it->payload_len ? n : it->payload_len);
+}

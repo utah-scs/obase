@@ -1,0 +1,49 @@
+[WARN]  Running against a source checkout. In order to get our runtime dependencies we'll have to invoke Maven. Depending on the state of your system, this may take ~30-45 seconds
+[DEBUG]  Running 'mvn -pl site.ycsb:crest-binding -am package -DskipTests dependency:build-classpath -DincludeScope=compile -Dmdep.outputFilterFile=true'
+java -cp /home/vin/tidal/YCSB/crest/conf:/home/vin/tidal/YCSB/crest/target/crest-binding-0.18.0-SNAPSHOT.jar:/home/vin/.m2/repository/org/apache/htrace/htrace-core4/4.1.0-incubating/htrace-core4-4.1.0-incubating.jar:/home/vin/.m2/repository/org/hdrhistogram/HdrHistogram/2.1.4/HdrHistogram-2.1.4.jar:/home/vin/.m2/repository/org/codehaus/jackson/jackson-mapper-asl/1.9.4/jackson-mapper-asl-1.9.4.jar:/home/vin/.m2/repository/org/codehaus/jackson/jackson-core-asl/1.9.4/jackson-core-asl-1.9.4.jar:/home/vin/tidal/YCSB/core/target/core-0.18.0-SNAPSHOT.jar site.ycsb.Client -db site.ycsb.db.CrestClient -s -p recordcount=1000000 -p operationcount=100000000 -p requestdistribution=hotspot -p hotspotdatafraction=1.0 -p hotspotopnfraction=1.0 -p readallfields=false -P workloads/workloadScatter_c -threads 1 -t
+Command line: -db site.ycsb.db.CrestClient -s -p recordcount=1000000 -p operationcount=100000000 -p requestdistribution=hotspot -p hotspotdatafraction=1.0 -p hotspotopnfraction=1.0 -p readallfields=false -P workloads/workloadScatter_c -threads 1 -t
+YCSB Client 0.18.0-SNAPSHOT
+
+Loading workload...
+Number of hot keys: 1000000
+Starting test.
+2024-08-11 02:59:16:700 0 sec: 0 operations; est completion in 0 second 
+DBWrapper: report latency for each error is false and specific error codes to track for latency are: []
+2024-08-11 02:59:26:640 10 sec: 2004302 operations; 200430.2 current ops/sec; est completion in 8 minutes [READ: Count=2004302, Max=24031, Min=2, Avg=3.9, 90=5, 99=8, 99.9=11, 99.99=50] 
+2024-08-11 02:59:36:640 20 sec: 4263552 operations; 225925 current ops/sec; est completion in 7 minutes [READ: Count=2259250, Max=24703, Min=2, Avg=3.49, 90=4, 99=6, 99.9=8, 99.99=14] 
+2024-08-11 02:59:46:640 30 sec: 6515962 operations; 225241 current ops/sec; est completion in 7 minutes [READ: Count=2252410, Max=9247, Min=2, Avg=3.51, 90=4, 99=7, 99.9=9, 99.99=13] 
+2024-08-11 02:59:56:640 40 sec: 8789838 operations; 227387.6 current ops/sec; est completion in 6 minutes [READ: Count=2273876, Max=7719, Min=2, Avg=3.47, 90=4, 99=6, 99.9=8, 99.99=13] 
+2024-08-11 03:00:06:640 50 sec: 11061565 operations; 227172.7 current ops/sec; est completion in 6 minutes [READ: Count=2271727, Max=4231, Min=2, Avg=3.48, 90=4, 99=7, 99.9=8, 99.99=14] 
+2024-08-11 03:00:16:640 60 sec: 13325801 operations; 226423.6 current ops/sec; est completion in 6 minutes [READ: Count=2264236, Max=4143, Min=2, Avg=3.49, 90=4, 99=6, 99.9=8, 99.99=13] 
+2024-08-11 03:00:26:640 70 sec: 15592626 operations; 226682.5 current ops/sec; est completion in 6 minutes [READ: Count=2266825, Max=4231, Min=2, Avg=3.49, 90=4, 99=6, 99.9=8, 99.99=13] 
+2024-08-11 03:00:36:640 80 sec: 17874076 operations; 228145 current ops/sec; est completion in 6 minutes [READ: Count=2281450, Max=4081, Min=2, Avg=3.46, 90=4, 99=6, 99.9=8, 99.99=13] 
+2024-08-11 03:00:46:640 90 sec: 20152653 operations; 227857.7 current ops/sec; est completion in 5 minutes [READ: Count=2278577, Max=4071, Min=2, Avg=3.47, 90=4, 99=6, 99.9=8, 99.99=13] 
+2024-08-11 03:00:56:640 100 sec: 22406863 operations; 225421 current ops/sec; est completion in 5 minutes [READ: Count=2254210, Max=4175, Min=2, Avg=3.51, 90=4, 99=6, 99.9=8, 99.99=13] 
+2024-08-11 03:01:06:640 110 sec: 24617374 operations; 221051.1 current ops/sec; est completion in 5 minutes [READ: Count=2210511, Max=13983, Min=2, Avg=3.6, 90=4, 99=8, 99.9=11, 99.99=15] 
+2024-08-11 03:01:16:640 120 sec: 26532917 operations; 191554.3 current ops/sec; est completion in 5 minutes [READ: Count=1915543, Max=3809, Min=2, Avg=4.28, 90=6, 99=10, 99.9=13, 99.99=21] 
+2024-08-11 03:01:26:640 130 sec: 27855890 operations; 132297.3 current ops/sec; est completion in 5 minutes [READ: Count=1322973, Max=6103, Min=2, Avg=6.63, 90=8, 99=36, 99.9=117, 99.99=1778] 
+2024-08-11 03:01:36:640 140 sec: 28986042 operations; 113015.2 current ops/sec; est completion in 5 minutes [READ: Count=1130152, Max=6835, Min=2, Avg=7.92, 90=19, 99=69, 99.9=217, 99.99=638] 
+2024-08-11 03:01:46:640 150 sec: 30424849 operations; 143880.7 current ops/sec; est completion in 5 minutes [READ: Count=1438807, Max=2547, Min=2, Avg=6.03, 90=8, 99=42, 99.9=77, 99.99=290] 
+2024-08-11 03:01:56:640 160 sec: 31923182 operations; 149833.3 current ops/sec; est completion in 5 minutes [READ: Count=1498333, Max=2535, Min=2, Avg=5.76, 90=7, 99=38, 99.9=71, 99.99=330] 
+2024-08-11 03:02:06:640 170 sec: 33541611 operations; 161842.9 current ops/sec; est completion in 5 minutes [READ: Count=1618429, Max=1967, Min=2, Avg=5.27, 90=5, 99=35, 99.9=57, 99.99=255] 
+2024-08-11 03:02:16:640 180 sec: 35226162 operations; 168455.1 current ops/sec; est completion in 5 minutes [READ: Count=1684551, Max=2829, Min=2, Avg=5.02, 90=5, 99=34, 99.9=54, 99.99=244] 
+2024-08-11 03:02:26:640 190 sec: 36931124 operations; 170496.2 current ops/sec; est completion in 5 minutes [READ: Count=1704962, Max=4399, Min=2, Avg=4.95, 90=5, 99=33, 99.9=52, 99.99=253] 
+2024-08-11 03:02:36:640 200 sec: 38693381 operations; 176225.7 current ops/sec; est completion in 5 minutes [READ: Count=1762257, Max=1901, Min=2, Avg=4.77, 90=5, 99=33, 99.9=51, 99.99=250] 
+2024-08-11 03:02:46:640 210 sec: 40446982 operations; 175360.1 current ops/sec; est completion in 5 minutes [READ: Count=1753601, Max=2959, Min=2, Avg=4.8, 90=4, 99=33, 99.9=52, 99.99=261] 
+2024-08-11 03:02:56:640 220 sec: 42231965 operations; 178498.3 current ops/sec; est completion in 5 minutes [READ: Count=1784983, Max=1738, Min=2, Avg=4.7, 90=4, 99=33, 99.9=53, 99.99=230] 
+2024-08-11 03:03:06:640 230 sec: 44090434 operations; 185846.9 current ops/sec; est completion in 4 minutes [READ: Count=1858469, Max=2369, Min=2, Avg=4.48, 90=4, 99=31, 99.9=51, 99.99=177] 
+2024-08-11 03:03:16:640 240 sec: 45980948 operations; 189051.4 current ops/sec; est completion in 4 minutes [READ: Count=1890514, Max=4471, Min=2, Avg=4.39, 90=4, 99=29, 99.9=48, 99.99=114] 
+2024-08-11 03:03:26:640 250 sec: 47908801 operations; 192785.3 current ops/sec; est completion in 4 minutes [READ: Count=1927853, Max=1765, Min=2, Avg=4.29, 90=4, 99=26, 99.9=46, 99.99=90] 
+2024-08-11 03:03:36:641 260 sec: 49889506 operations; 198070.5 current ops/sec; est completion in 4 minutes [READ: Count=1980705, Max=2369, Min=2, Avg=4.15, 90=4, 99=24, 99.9=44, 99.99=80] 
+Traceback (most recent call last):
+  File "bin/ycsb", line 326, in <module>
+    sys.exit(main())
+  File "bin/ycsb", line 317, in main
+    return subprocess.call(ycsb_command)
+  File "/usr/lib/python2.7/subprocess.py", line 172, in call
+    return Popen(*popenargs, **kwargs).wait()
+  File "/usr/lib/python2.7/subprocess.py", line 1099, in wait
+    pid, sts = _eintr_retry_call(os.waitpid, self.pid, 0)
+  File "/usr/lib/python2.7/subprocess.py", line 125, in _eintr_retry_call
+    return func(*args)
+KeyboardInterrupt

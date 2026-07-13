@@ -1,0 +1,13 @@
+crest/bin
+*.o
+*.x
+.ipynb_checkpoints/
+.vscode/settings.json
+**/.build
+crest/ColdObjectFile
+tools/ColdObjectFile
+.gdb_history
+nohup.out
+__pycache__/
+*.pyc
+*.swp

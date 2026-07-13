@@ -1,0 +1,15 @@
+#ifndef OBASE_TEST_BASIC_H
+#define OBASE_TEST_BASIC_H
+
+#include <cstddef>
+#include "Guide.hpp"
+
+struct Item
+{
+    Guide<void> payload;
+    Guide<char> name;
+    size_t payload_len;
+    Item *next;
+};
+
+#endif
