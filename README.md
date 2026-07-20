@@ -194,12 +194,17 @@ skew in the access pattern. CrestKV's own scope is described in
   2026. [pdf](https://www.vinaybanakar.com/assets/pdf/vinay-dissertation.pdf).
 
 ```bibtex
-@inproceedings{banakar2026obase,
-  title     = {{OBASE}: Object-Based Address-Space Engineering to Improve Memory Tiering},
-  author    = {Banakar, Vinay and Yang, Suli and Wu, Kan and Arpaci-Dusseau, Andrea C.
-               and Arpaci-Dusseau, Remzi H. and Keeton, Kimberly},
-  booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
-  year      = {2026}
+@inproceedings {318399,
+author = {Vinay Banakar and Suli Yang and Kan Wu and Andrea C. Arpaci-Dusseau and Remzi H. Arpaci-Dusseau and Kimberly Keeton},
+title = {{OBASE}: {Object-Based} {Address-Space} Engineering to Improve Memory Tiering},
+booktitle = {20th USENIX Symposium on Operating Systems Design and Implementation (OSDI 26)},
+year = {2026},
+isbn = {978-1-939133-55-7},
+address = {Seattle, WA},
+pages = {151--166},
+url = {https://www.usenix.org/conference/osdi26/presentation/banakar},
+publisher = {USENIX Association},
+month = jul
 }
 
 @inproceedings{10.1145/3764862.3768179,
