@@ -8,7 +8,7 @@
 #include <bitset>
 #include <set>
 #include <mutex>
-#include "/home/vin/jemalloc/include/jemalloc/jemalloc.h"
+#include <jemalloc/jemalloc.h>
 #include "Sama.h"
 #include "globalConfig.h"
 

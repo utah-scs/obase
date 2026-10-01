@@ -14,7 +14,7 @@ cd "$(dirname "$0")/../.."   # crest/
 
 CONVERTER=bin/guide-converter
 VALIDATOR=bin/guide-validator
-CFLAGS="-Wall -std=c++17 -I. -Idatastructures -Iruntime -I/home/vin/jemalloc/include -fPIC -march=native -O2"
+CFLAGS="-Wall -std=c++17 -I. -Idatastructures -Iruntime -I${JEMALLOC_DIR:-$HOME/jemalloc}/include -fPIC -march=native -O2"
 TESTS=compiler/tests
 PASS=0
 FAIL=0

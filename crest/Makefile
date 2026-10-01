@@ -8,8 +8,9 @@ OPT=opt-12
 # Switching DS automatically rebuilds the objects that embed the choice.
 DS ?= bpt_mass
 
-CFLAGS=-Wall -std=c++17 -I. -Idatastructures -Iruntime -pthread -I/home/vin/jemalloc/include -fPIC -march=native -flto -O2 -MMD -MP -DCREST_DS=$(DS) #-g -O0
-LDFLAGS=-pthread -L/home/vin/jemalloc/lib -pie -flto
+JEMALLOC_DIR ?= $(HOME)/jemalloc
+CFLAGS=-Wall -std=c++17 -I. -Idatastructures -Iruntime -pthread -I$(JEMALLOC_DIR)/include -fPIC -march=native -flto -O2 -MMD -MP -DCREST_DS=$(DS) #-g -O0
+LDFLAGS=-pthread -L$(JEMALLOC_DIR)/lib -Wl,-rpath,$(JEMALLOC_DIR)/lib -pie -flto
 LIBS=-levent -levent_core -levent_extra -levent_openssl -levent_pthreads -ljemalloc
 
 LLVM_FLAGS=$(shell llvm-config-12 --cxxflags --ldflags --libs)
@@ -89,7 +90,7 @@ all: $(SERVER) $(CLIENT)
 converter: $(GUIDE_CONVERTER)
 
 test-compiler: $(GUIDE_CONVERTER) $(GUIDE_VALIDATOR) $(VISIBILITY_EXTRACTOR) $(GUIDE_PASS)
-	compiler/tests/run_tests.sh
+	JEMALLOC_DIR="$(JEMALLOC_DIR)" compiler/tests/run_tests.sh
 
 # `all` builds the whole pipeline set; the binary links only the selected
 # structure (the other objects are compile checks, not payload).

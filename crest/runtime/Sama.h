@@ -6,7 +6,7 @@
 #include <shared_mutex>
 #include <atomic>
 #include <thread>
-#include "/home/vin/jemalloc/include/jemalloc/jemalloc.h"
+#include <jemalloc/jemalloc.h>
 
 class Sama
 {
