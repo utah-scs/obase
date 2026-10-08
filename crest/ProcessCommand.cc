@@ -134,6 +134,9 @@ std::string ProcessCommand::execute(const std::string &command)
     }
     else if (cmd == "OBASE" || cmd == "obase")
     {
+#if CREST_RAW_POINTERS
+        return "ERR OBASE disabled in raw-pointer build";
+#else
         // Enable/disable tracking and migration 
         std::string mode;
         iss >> mode;
@@ -183,6 +186,7 @@ std::string ProcessCommand::execute(const std::string &command)
             return "OK";
         }
         return "ERR";
+#endif
     }
     else if (cmd == "\n" || cmd == "")
     {

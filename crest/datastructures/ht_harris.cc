@@ -44,6 +44,13 @@ namespace ht_harris
         while (curr)
         {
             HarrisNode<void *, void *> *next = curr->next.load();
+#if CREST_RAW_POINTERS
+            if (curr != head && curr != tail)
+            {
+                jem_free(curr->key);
+                jem_free(curr->value);
+            }
+#endif
             delete curr;
             curr = next;
         }
@@ -67,8 +74,13 @@ namespace ht_harris
                     // Handle allocation failure
                     if (newNode)
                     {
+#if CREST_RAW_POINTERS
+                        jem_free(newNode->key);
+                        jem_free(newNode->value);
+#else
                         newNode->key.destroy();
                         newNode->value.destroy();
+#endif
                         delete newNode;
                     }
                     return false;
@@ -76,6 +88,10 @@ namespace ht_harris
 
                 memcpy(new_value, value, value_size);
 
+#if CREST_RAW_POINTERS
+                void *old_value = __atomic_exchange_n(&curr->value, new_value, __ATOMIC_ACQ_REL);
+                jem_free(old_value);
+#else
                 // Atomic update loop
                 uintptr_t old_ptr_val, new_ptr_val;
                 MemType oldMemType;
@@ -130,12 +146,18 @@ namespace ht_harris
 
                 // Set the appropriate bit in soda_
                 soda_.Set1((((uint64_t)&curr->value - (uint64_t)global_addr_start) / 8));
+#endif
 
                 // Clean up new node if it was allocated
                 if (newNode)
                 {
+#if CREST_RAW_POINTERS
+                    jem_free(newNode->key);
+                    jem_free(newNode->value);
+#else
                     newNode->key.destroy();
                     newNode->value.destroy();
+#endif
                     delete newNode;
                 }
 
@@ -202,8 +224,14 @@ namespace ht_harris
                 std::memory_order_acq_rel,
                 std::memory_order_relaxed))
         {
+#if CREST_RAW_POINTERS
+            jem_free(curr->key);
+            // The caller owns the removed value and will free it.
+            curr->value = nullptr;
+#else
             curr->key.destroy();
             curr->value.destroy();
+#endif
             delete curr;
         }
 

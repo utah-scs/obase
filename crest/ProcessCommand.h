@@ -4,8 +4,10 @@
 // Data structure selected at build time: make all DS=<name> (see dsconfig.h)
 #include "dsconfig.h"
 
+#if !CREST_RAW_POINTERS
 #include "ObjectCollector.h"
 #include "Sama.h"
+#endif
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -18,12 +20,15 @@ class KeyValueStore
 {
 public:
     KeyValueStore()
+#if !CREST_RAW_POINTERS
         // : sama({MemType::DRAM})
         : sama({MemType::DRAM, MemType::DRAM_2MB_THP}) // COLD_HEAP, HOT_HEAP
     // : sama({MemType::DRAM, MemType::DRAM_2MB_HUGETLBFS}) // COLD_HEAP, HOT_HEAP
     // : sama({MemType::DRAM_1GB_HUGETLBFS})
     // : sama({MemType::DRAM, MemType::SSD})
+#endif
     {
+#if !CREST_RAW_POINTERS
         g_sama = &sama;
 
         // needed for sim_inc_dict
@@ -39,8 +44,13 @@ public:
         */
 
         ObaseRTMode.store(0, std::memory_order_release);
+#endif
         spdlog::info("Data structure: {}", CREST_DS_NAME);
+#if CREST_RAW_POINTERS
+        spdlog::info("Pointer mode: raw (OBASE runtime not linked)");
+#else
         spdlog::info("OBASE runtime mode: {}", ObaseRTMode.load());
+#endif
     }
 
     ~KeyValueStore()
@@ -66,12 +76,16 @@ public:
      *  2    migrate // enable migration
      * Written by client-command threads, read by the migrator thread.
      */
+#if !CREST_RAW_POINTERS
     std::atomic<uint8_t> ObaseRTMode;
+#endif
 
     dict theDict;
 
+#if !CREST_RAW_POINTERS
     std::unique_ptr<ObjectCollector> scanAndMigrator;
     Sama sama;
+#endif
 
 private:
     bool profilingEnabled = false;

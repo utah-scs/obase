@@ -79,8 +79,13 @@ namespace ht_chm
                 while (node)
                 {
                     HashNode *next = node->next;
+#if CREST_RAW_POINTERS
+                    jem_free(node->key);
+                    jem_free(node->value);
+#else
                     node->key.destroy();
                     node->value.destroy();
+#endif
                     jem_free(node);
                     node = next;
                 }
@@ -131,12 +136,20 @@ namespace ht_chm
                 // Update existing value: swap then free (never destroy()
                 // a live slot first -- transient SODA Set0 leaks ATC)
                 void *old_val = static_cast<void *>(curr->value); // pins via ATC
+#if !CREST_RAW_POINTERS
                 MemType old_type = curr->value.getMemType();
+#endif
                 curr->value = jem_malloc(value_size);
+#if !CREST_RAW_POINTERS
                 curr->value.setHeapId(0); // set heap id to START heap
+#endif
                 curr->value_size = value_size;
                 memcpy(curr->value, value_data, value_size);
+#if CREST_RAW_POINTERS
+                jem_free(old_val);
+#else
                 g_sama->free(old_val, old_type);
+#endif
                 UNLOCK(&seg->lock);
                 return 1;
             }
@@ -191,8 +204,13 @@ namespace ht_chm
                 void *value_copy = jem_malloc(curr->value_size);
                 memcpy(value_copy, curr->value, curr->value_size);
 
+#if CREST_RAW_POINTERS
+                jem_free(curr->key);
+                jem_free(curr->value);
+#else
                 curr->key.destroy();
                 curr->value.destroy();
+#endif
                 jem_free(curr);
                 seg->size--;
 

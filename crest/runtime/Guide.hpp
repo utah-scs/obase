@@ -9,6 +9,13 @@
 #include <set>
 #include <mutex>
 #include <jemalloc/jemalloc.h>
+#include "spdlog/spdlog.h"
+
+#if CREST_RAW_POINTERS
+// Load-then-read benchmark mode: real C++ pointers, no guide metadata or hooks.
+template <typename T>
+using Guide = T *;
+#else
 #include "Sama.h"
 #include "globalConfig.h"
 
@@ -774,4 +781,5 @@ public:
     }
 };
 
+#endif // CREST_RAW_POINTERS
 #endif // OBASE_GUIDE_HPP

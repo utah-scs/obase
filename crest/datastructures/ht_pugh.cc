@@ -10,8 +10,13 @@ ll_node::ll_node(void *k, void *v, size_t ks, size_t vs, ll_node *n)
 
 ll_node::~ll_node()
 {
+#if CREST_RAW_POINTERS
+    jem_free(key);
+    jem_free(val);
+#else
     key.destroy();
     val.destroy();
+#endif
     DESTROY_LOCK(&lock);
 }
 
@@ -212,9 +217,13 @@ int LinkedListPugh::insert(const void *key, size_t key_size,
         // a live slot before reassigning: the transient SODA Set0 makes
         // concurrent readers skip their ATC decrement (permanent leak).
         void *old_val = static_cast<void *>(right->val); // pins via ATC
+#if !CREST_RAW_POINTERS
         MemType old_type = right->val.getMemType();
+#endif
         right->val = jem_malloc(val_size);
+#if !CREST_RAW_POINTERS
         right->val.setHeapId(0);
+#endif
         if (!right->val)
         {
             perror("jem_malloc @ insert update");
@@ -222,7 +231,11 @@ int LinkedListPugh::insert(const void *key, size_t key_size,
         }
         memcpy(right->val, val, val_size);
         right->val_size = val_size;
+#if CREST_RAW_POINTERS
+        jem_free(old_val);
+#else
         g_sama->free(old_val, old_type);
+#endif
 
         UNLOCK(&right->lock);
         result = 1; // Indicate update was successful

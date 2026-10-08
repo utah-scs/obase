@@ -8,8 +8,13 @@ OPT=opt-12
 # Switching DS automatically rebuilds the objects that embed the choice.
 DS ?= bpt_mass
 
+# Raw-pointer baseline for load-then-read workloads; no OBASE runtime linked.
+#   make all DS=ht_harris RAW_POINTERS=1 BIN_DIR=bin-raw
+RAW_POINTERS ?= 0
+RAW_DS = ht_harris ht_pugh ht_chm bpt_mass
+
 JEMALLOC_DIR ?= $(HOME)/jemalloc
-CFLAGS=-Wall -std=c++17 -I. -Idatastructures -Iruntime -pthread -I$(JEMALLOC_DIR)/include -fPIC -march=native -flto -O2 -MMD -MP -DCREST_DS=$(DS) #-g -O0
+CFLAGS=-Wall -std=c++17 -I. -Idatastructures -Iruntime -pthread -I$(JEMALLOC_DIR)/include -fPIC -march=native -flto -O2 -MMD -MP -DCREST_DS=$(DS) -DCREST_RAW_POINTERS=$(RAW_POINTERS) #-g -O0
 LDFLAGS=-pthread -L$(JEMALLOC_DIR)/lib -Wl,-rpath,$(JEMALLOC_DIR)/lib -pie -flto
 LIBS=-levent -levent_core -levent_extra -levent_openssl -levent_pthreads -ljemalloc
 
@@ -17,7 +22,12 @@ LLVM_FLAGS=$(shell llvm-config-12 --cxxflags --ldflags --libs)
 
 # Set to 0 to skip the OBASE instrumentation pass (baseline builds):
 #   make all ENABLE_LLVM_PASS=0
-ENABLE_LLVM_PASS ?= 1
+ENABLE_LLVM_PASS ?= $(if $(filter 1,$(RAW_POINTERS)),0,1)
+ifeq ($(RAW_POINTERS),1)
+ifneq ($(ENABLE_LLVM_PASS),0)
+$(error RAW_POINTERS=1 requires ENABLE_LLVM_PASS=0)
+endif
+endif
 
 # Set to 0 to skip the validation pass (guide misuse then fails at runtime
 # instead of at build time; only for debugging the validator itself):
@@ -53,6 +63,15 @@ else
 PIPELINE_DS = $(sort $(ALL_DS) $(EXTRA_DS))
 endif
 
+ifeq ($(RAW_POINTERS),1)
+ifneq ($(origin DS),command line)
+PIPELINE_DS = $(RAW_DS)
+endif
+ifneq ($(filter-out $(RAW_DS),$(DS) $(PIPELINE_DS)),)
+$(error Raw-pointer mode supports only $(RAW_DS))
+endif
+endif
+
 DS_OBJ=$(addprefix $(OBJ_DIR)/datastructures/,$(addsuffix .o,$(PIPELINE_DS)))
 DS_VIS=$(addprefix $(VISIBILITY_DIR)/,$(addsuffix .cc.visibility,$(PIPELINE_DS)))
 
@@ -69,10 +88,22 @@ $(DS_STAMP):
 $(DS_DEPENDENT_OBJ): $(DS_STAMP)
 
 # KV-store + runtime sources (compiled directly, no pass)
-SERVER_SRC=crest_server.cc ProcessCommand.cc globalConfig.cc \
+SERVER_SRC=crest_server.cc ProcessCommand.cc
+ifneq ($(RAW_POINTERS),1)
+SERVER_SRC+=globalConfig.cc \
 	runtime/GuideVoid.cc runtime/TagRuntime.cc \
 	runtime/soda.cc runtime/ObjectCollector.cc runtime/Sama.cc
+endif
 SERVER_OBJ=$(addprefix $(OBJ_DIR)/,$(SERVER_SRC:.cc=.o))
+
+# Flags must invalidate cached objects even if the same BIN_DIR is reused.
+CONFIG_STAMP=$(BIN_DIR)/.config-raw$(RAW_POINTERS)-pass$(ENABLE_LLVM_PASS)-validate$(ENABLE_VALIDATION).stamp
+$(CONFIG_STAMP):
+	@rm -f $(BIN_DIR)/.config-*.stamp
+	@touch $@
+
+$(SERVER_OBJ) $(addprefix $(LLVM_DIR)/,$(addsuffix .ll,$(PIPELINE_DS))) \
+    $(DS_VIS): $(CONFIG_STAMP)
 
 SERVER=$(BIN_DIR)/crest-server
 CLIENT=$(BIN_DIR)/crest-cli

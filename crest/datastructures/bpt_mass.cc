@@ -205,7 +205,11 @@ namespace bpt_mass
     {
         if (data)
         {
+#if CREST_RAW_POINTERS
+            jem_free(data);
+#else
             data.destroy();
+#endif
             data = nullptr;
         }
     }
