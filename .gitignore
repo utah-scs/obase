@@ -11,3 +11,5 @@ nohup.out
 __pycache__/
 *.pyc
 *.swp
+.venv-bench/
+crest/bin-figure9-*/
