@@ -19,8 +19,7 @@ ObjectCollector::ObjectCollector(uint64_t intervalDuration, uint8_t inactiveWind
                                dict *dictionary, Sama *allocator, std::atomic<uint8_t> *ObaseRTMode)
     : intervalDuration(intervalDuration), inactiveWindowThreshold(inactiveWindowThreshold),
       dictionary(dictionary), sama(allocator), ObaseRTMode(ObaseRTMode),
-      // targetPromotionRate(0.01),                               // 1% target promotion rate 
-      targetPromotionRate(0.02),                               // 2% target promotion rate 
+      targetPromotionRate(0.01),                               // Paper default: 1% per minute
       backoffActive(false),                                    // Start not in backoff mode
       multiplicationFactor(2),                                 // Double W each time
       incrementSize(1),                                        // Increase by 1 when above target
@@ -34,6 +33,10 @@ ObjectCollector::ObjectCollector(uint64_t intervalDuration, uint8_t inactiveWind
                                                                //   initialIntervals(12),                                    // Wait for initial threshold intervals // meta
       currentPromotionRate(std::numeric_limits<double>::max()) // Start with max value
 {
+    spdlog::info("Object Collector: scan interval={}s, target promotion rate={:.2f}% per minute, "
+                 "Ct initial={}, step=+{}/-{}, bounds=[{}, {}]",
+                 intervalDuration, targetPromotionRate * 100, inactiveWindowThreshold,
+                 incrementSize, decrementSize, W_min, W_max);
 }
 
 /*
@@ -416,6 +419,7 @@ void ObjectCollector::updateObjectTrackingWithStats()
 void ObjectCollector::promoteHotObjects()
 {
     uint64_t promoted = 0;
+    uint64_t promotedBytes = 0;
     uint64_t index = 1;
     while (soda_.FindNextSetBit(&index))
     {
@@ -429,7 +433,7 @@ void ObjectCollector::promoteHotObjects()
 
         if (getConsecutiveInactiveWins(ptrAddress) == 0 && getHeapId(ptrAddress) != HOT_HEAP && (*ptrAddress & ADDRESS_MASK) != 0xffffffffffffULL)
         {
-            if (migrateObject(ptrAddress, HOT_HEAP))
+            if (migrateObject(ptrAddress, HOT_HEAP, promotedBytes))
             {
                 promoted++;
                 spdlog::trace("Promoted object to hot heap: {}", fmt::ptr(reinterpret_cast<void *>(ptrAddress)));
@@ -459,12 +463,13 @@ void ObjectCollector::promoteHotObjects()
         sama->madviseTryVMHugePage(MemType::DRAM_2MB_THP);
         sama->purgeUnused();
     }
-    spdlog::debug("Promoted {} objects to hot heap.", promoted);
+    spdlog::debug("Promoted {} objects to hot heap. bytes_promoted={}", promoted, promotedBytes);
 }
 
 void ObjectCollector::demoteColdObjects()
 {
     uint64_t demoted = 0;
+    uint64_t demotedBytes = 0;
     uint64_t index = 1;
     while (soda_.FindNextSetBit(&index))
     {
@@ -478,7 +483,7 @@ void ObjectCollector::demoteColdObjects()
 
         if (getConsecutiveInactiveWins(ptrAddress) >= inactiveWindowThreshold && getHeapId(ptrAddress) != COLD_HEAP && (*ptrAddress & ADDRESS_MASK) != 0xffffffffffffULL)
         {
-            if (migrateObject(ptrAddress, COLD_HEAP))
+            if (migrateObject(ptrAddress, COLD_HEAP, demotedBytes))
             {
                 demoted++;
                 spdlog::trace("Demoted object to cold heap: {}", fmt::ptr(reinterpret_cast<void *>(ptrAddress)));
@@ -518,11 +523,11 @@ void ObjectCollector::demoteColdObjects()
     {
         sama->purgeUnused();
     }
-    spdlog::debug("Demoted {} objects to cold heap.", demoted);
+    spdlog::debug("Demoted {} objects to cold heap. bytes_demoted={}", demoted, demotedBytes);
 }
 
 // Follows the Asycnhronous Lock-Free Migration protocol (ODM)
-bool ObjectCollector::migrateObject(uintptr_t *ptrAddress, uint8_t targetHeap)
+bool ObjectCollector::migrateObject(uintptr_t *ptrAddress, uint8_t targetHeap, uint64_t &bytesMoved)
 {
     // Step 1 & 2: Read original guide and check for active references.
     // All eligibility checks are made on this single snapshot; the two CAS
@@ -612,6 +617,7 @@ bool ObjectCollector::migrateObject(uintptr_t *ptrAddress, uint8_t targetHeap)
     {
         // Step 6a: Migration successful
         sama->free(oldAddr, originMemType);
+        bytesMoved += objSize;
         return true;
     }
     else

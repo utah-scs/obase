@@ -71,7 +71,7 @@ private:
     void updateObjectTrackingWithStats();
     void promoteHotObjects();
     void demoteColdObjects();
-    bool migrateObject(uintptr_t *ptrAddress, uint8_t targetHeap);
+    bool migrateObject(uintptr_t *ptrAddress, uint8_t targetHeap, uint64_t &bytesMoved);
     void clearAllAccessBits();
 
     static bool getAccessBit(const uintptr_t *ptr)
