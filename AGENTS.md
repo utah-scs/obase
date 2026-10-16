@@ -48,3 +48,36 @@ History uses short descriptive subjects, such as “Make jemalloc installation p
 ## Runtime Invariants
 
 Managed objects must be jemalloc-allocated and singly owned. Keep traversal pointers unmanaged, and never dereference returned raw pointers after an operation ends. Keep build-time validation enabled.
+
+# Coding Agent Instructions
+
+## Project continuity
+
+This project runs on ephemeral remote machines. The machine may be destroyed at any time.
+
+Your work must be recoverable from Git and persistent artifact storage.
+
+## At the beginning of every session
+
+1. Read `PROGRESS.md` and `EXPERIMENTS.md`.
+2. Inspect the current Git branch, commit, and working tree.
+3. Identify the latest completed experiment and any unfinished work.
+4. Resume from the documented next steps, validating existing results before continuing.
+
+## During the session
+
+1. Update `PROGRESS.md` after meaningful milestones.
+2. Record every experiment in `EXPERIMENTS.md`, including the hypothesis, configuration, commands, results, and conclusions.
+3. Store large outputs and checkpoints in the configured persistent storage.
+4. Commit coherent, recoverable code changes frequently.
+5. Never commit secrets, credentials, datasets, or large binary artifacts.
+
+## Before stopping
+
+1. Record what was accomplished.
+2. Record current failures, blockers, and unfinished work.
+3. Write the exact next action for a new agent session.
+4. Record the relevant Git commit and artifact locations.
+5. Run the configured persistence script and verify it succeeded.
+
+Do not claim that work has been backed up unless the remote Git push and artifact upload have succeeded.

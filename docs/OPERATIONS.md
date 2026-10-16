@@ -15,12 +15,56 @@
   export LD_LIBRARY_PATH=/path/to/jemalloc/lib:$LD_LIBRARY_PATH
   ```
 
-  The jemalloc include/lib paths are set at the top of `crest/Makefile`.
+  `JEMALLOC_DIR` defaults to `$HOME/jemalloc`; override it on the make command
+  line when using another location.
 - `echo 1 > /proc/sys/vm/overcommit_memory` if the large virtual
   reservations are refused (the HOT/COLD regions are reserved virtually and
   faulted on demand).
 
 ## Build
+
+### Ubuntu 22.04 dependency setup
+
+The replacement machine was provisioned on 2026-10-16 with these commands:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y clang-12 llvm-12-dev libclang-12-dev libevent-dev \
+  openjdk-17-jdk-headless maven autoconf automake libtool pkg-config numactl \
+  libstdc++-12-dev
+git clone --depth 1 --branch 5.3.0 https://github.com/jemalloc/jemalloc.git "$HOME/jemalloc"
+cd "$HOME/jemalloc"
+./autogen.sh --with-jemalloc-prefix=jem_
+make -j8
+```
+
+The jemalloc 5.3.0 tag resolves to
+`54eaed1d8b56b1aa528be3bdd1877e59c56fa90c`. The GCC 12 C++ headers are needed
+on this machine because Clang selects the installed GCC 12 toolchain even
+though the default `g++` is version 11; without them, compilation fails to
+find standard headers such as `iostream` and `cstddef`.
+
+From the repository root, validate the server/compiler and YCSB binding:
+
+```bash
+make -C crest all test-compiler JEMALLOC_DIR="$HOME/jemalloc" -j8
+cd YCSB
+mvn -B -pl site.ycsb:crest-binding -am clean package -Dcheckstyle.skip
+```
+
+Use `mvn -version` to confirm Java 17 or newer before building. This setup
+does not configure the kernel, swap, memory limits, or persistent artifact
+storage; check those separately before running memory-reclamation experiments.
+
+On the 2026-10-16 replacement machine, the first server startup failed with
+`Could not map memory for arena` until `sudo sysctl -w vm.overcommit_memory=1`
+was applied. That setting is also recorded in `/etc/sysctl.conf` for reboot.
+The approved memory-backend setup installed `linux-generic-hwe-22.04`
+(`6.8.0-138-generic`) and enabled a 30 GiB `/swapfile`, mode 0600, with
+`/swapfile none swap sw 0 0` in `/etc/fstab`. The new kernel still requires a
+reboot; see `PROGRESS.md` for the current checkpoint and unfinished validation.
+
+### Server builds
 
 ```bash
 cd crest
