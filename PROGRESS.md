@@ -37,11 +37,13 @@ provides the throughput runner, but is not evidence that a run completed.
 - THP mode: `madvise`. No swap at session start.
 - User approved installing the Ubuntu 6.8 HWE kernel and a 30 GiB swap file.
   Kernel `6.8.0-138-generic` and its initramfs are installed. `/swapfile` is
-  active (30 GiB) and registered in `/etc/fstab`. Reboot has not been
-  authorized or performed; the running kernel remains 5.15.
+  active (30 GiB) and registered in `/etc/fstab`. The user authorized reboot
+  on 2026-10-16. Pre-reboot checks still report kernel 5.15, active swap,
+  and `vm.overcommit_memory=1`; post-reboot verification is pending.
 - User approved these two tracking files and selected their private laptop
   as the prospective artifact destination. Laptop OS, SSH connection details,
-  and final destination path are still needed. No artifact transfer is verified.
+  and final destination path are still needed. The user deferred laptop backup
+  setup; no artifact transfer is verified. This does not block the authorized reboot.
 
 ## Failures and unfinished work
 
@@ -61,10 +63,12 @@ provides the throughput runner, but is not evidence that a run completed.
 
 ## Exact next actions
 
-1. Obtain laptop OS/SSH details, prepare artifact transfer commands, and verify
-   an actual transfer. Do not describe local files as backed up.
-2. After verifying the laptop copy, obtain permission to reboot, then verify `uname -r`,
-   `swapon --show`, and `sysctl vm.overcommit_memory` on reconnection.
+1. Reboot as authorized, then verify `uname -r` reports `6.8.0-138-generic`,
+   `swapon --show` reports the 30 GiB swap file, and
+   `sysctl vm.overcommit_memory` reports 1 on reconnection. If the session
+   disconnects, inspect the running kernel before issuing another reboot.
+2. Resume laptop backup setup when the user is ready. Obtain OS/SSH details,
+   prepare artifact transfer commands, and verify an actual transfer.
 3. Validate migration and RSS behavior before resuming the throughput matrix
    from `tools/run_obase_throughput.py`; choose CPU sets using this machine's
    NUMA topology. Locate old result artifacts before claiming continuity.
