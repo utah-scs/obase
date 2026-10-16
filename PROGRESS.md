@@ -63,10 +63,9 @@ provides the throughput runner, but is not evidence that a run completed.
 
 1. Obtain laptop OS/SSH details, prepare artifact transfer commands, and verify
    an actual transfer. Do not describe local files as backed up.
-2. Commit and push this checkpoint; record the remotely verified commit.
-3. After saving progress, obtain permission to reboot, then verify `uname -r`,
+2. After verifying the laptop copy, obtain permission to reboot, then verify `uname -r`,
    `swapon --show`, and `sysctl vm.overcommit_memory` on reconnection.
-4. Validate migration and RSS behavior before resuming the throughput matrix
+3. Validate migration and RSS behavior before resuming the throughput matrix
    from `tools/run_obase_throughput.py`; choose CPU sets using this machine's
    NUMA topology. Locate old result artifacts before claiming continuity.
 
@@ -75,6 +74,9 @@ provides the throughput runner, but is not evidence that a run completed.
 Setup logs are collected at
 `/home/cc/obase-artifacts/setup-2026-10-16/` (also available as
 `/tmp/obase-*.log`). These are local ephemeral artifacts, not backups.
-Remote checkpoint push and
-laptop transfer have not yet been verified. This document is part of the
-pending recovery-checkpoint commit; use `git log -1 -- PROGRESS.md` to resolve it.
+Recovery checkpoint `2f2a1ad7026e647e7f75330e0ba2cb86a77830ec` was pushed to
+`origin/vp/obj`, and `git ls-remote` confirmed the same remote commit. This
+status update follows that checkpoint; use `git log -1 -- PROGRESS.md` for
+the newest record. Laptop artifact transfer has not been verified, and no
+persistence script exists yet. The combined Git-and-artifact backup is
+therefore incomplete.
