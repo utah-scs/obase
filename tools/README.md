@@ -17,3 +17,28 @@ Measurement and experiment helpers for CrestDB/OBASE. Build the C tools with
 | `verify_delete.py [threads] [secs]` | DELETE integrity stress against a running server: mixed SET/GET/DEL/SCAN from several connections, verifying GET-after-SET is byte-exact, GET-after-DEL is a miss, and a persistent key set survives. Run with migration active to stress the OC against deletions. |
 | `verify_ycsb_matrix.sh` | Full YCSB coverage matrix with migration active: workloads A–F on bpt_mass, A–D,F on ht_chm, and a request-distribution sweep (uniform/zipfian/latest/hotspot/exponential/sequential). PASS requires zero errors, zero server-log errors, live server. ~25 min. |
 | `traceReader/` | Real-trace workload drivers (build with `make` in that directory): `twitterZstLoader.x`/`twitterZstReplay.x` (Twitter production cache traces, streamed from `.sort.zst`), `kvTraceGenerator`/`kvTraceReplay`/`multiThreadedKvTraceReplay.x` (Meta CacheLib kvcache CSV traces), and `meta_bench.x` + `runMetaBench.sh` (Meta mixgraph synthetic capacity workload). Usage in `docs/BENCHMARKS.md`. |
+
+The migration and RSS checks require the built Crest YCSB distribution
+(`mvn -pl site.ycsb:crest-binding -am package -Dcheckstyle.skip` from `YCSB/`).
+They use Java directly, resolve repository paths automatically, refuse to run
+alongside an existing `crest-server`, and stop only processes they started.
+`SCRATCH` selects a new output directory (it must not already exist);
+`JEMALLOC_DIR`, `THREADS`, `SERVER_CPUS`, and `CLIENT_CPUS` are configurable.
+CPU sets default to the caller's allowed CPUs; set separate sets explicitly
+for reproducible measurements. Each run records configuration, source state,
+build/client/server logs, and a summary. Failures return a nonzero exit status.
+
+For a shorter Masstree reclamation smoke test, use:
+
+```bash
+RECORDS=100000 SCAN_INTERVAL=15 RUN_SECONDS=180 \
+  bash tools/verify_rss_workloadA.sh bpt_mass
+```
+
+The RSS check measures `/proc/<pid>/smaps_rollup`, requires at least a 20%
+drop from the post-load RSS, and confirms swapped pages, bulk demotion,
+pageout rounds, successful reads/updates, and unchanged sentinel bytes.
+The legacy `trackRSS` tool adds transparent-huge-page bytes to RSS even
+though RSS already includes them; do not use it for these comparisons.
+The migration check verifies sampled values across migration phases;
+it does not instrument individual sentinel locations.

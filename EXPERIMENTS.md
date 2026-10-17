@@ -93,3 +93,74 @@ remains present at `/home/cc/obase-artifacts/setup-2026-10-16/`.
 No workload was run in this check; post-reboot integrity, cold migration,
 and RSS reclamation remain to be validated. Observations are recorded here;
 no separate artifact file or remote artifact copy was created.
+
+## POSTBOOT-2026-10-17 — Masstree integrity and reclamation
+
+**Hypothesis:** The existing instrumented Masstree server retains correct
+operation results on kernel 6.8; cold migration can reclaim anonymous memory
+through the configured swap backend without corrupting sampled values.
+
+**Configuration:** Source checkpoint `4097e09`; C++ unchanged. Kernel
+`6.8.0-138-generic`, 30 GiB swap, overcommit 1, THP `madvise`. The user
+approved edits to `tools/verify_migration.sh` and
+`tools/verify_rss_workloadA.sh` for this machine. Their exact patch is captured
+in each verification artifact directory. No new verification script was added.
+
+**Integrity phase:** Started `crest/bin/crest-server 127.0.0.1 6363 1 4`
+with `CREST_SCAN_INTERVAL_S=5`, pinned to CPUs `0,4,8,12,16`; enabled
+`obase decay` and `obase migrate`. Ran
+`taskset -c 20,24,28,32 python3 tools/verify_delete.py 4 60` with a 75-second
+client timeout and 90-second server timeout (3-second kill grace).
+Result: **PASS**, 683,641 SETs, 1,708,982 GETs, 683,641 DELETEs, 6,834 SCANs,
+zero integrity errors; no Python exceptions or server error/critical messages.
+The existing test checks byte-exact GETs, deletion misses, and persistent
+keys; SCAN checks response format, not all returned payload bytes.
+
+**Migration phase:** The first attempt below completed its workload checks
+(50,419,450 successful reads, largest demotion 180,003 objects, largest
+promotion 20,000 objects, sentinels unchanged), but the harness exited 2
+after cleanup: an in-place edit during execution shifted the shell's input
+and caused a trailing parse error. This is retained as an invalid harness
+run, not the accepted verification result. The finalized script is being
+rerun in `migration-final/` without editing it while running.
+
+```bash
+SCRATCH=/home/cc/obase-artifacts/postboot-2026-10-17/migration \
+THREADS=8 SERVER_CPUS=0,4,8,12,16,20,24,28,32 \
+CLIENT_CPUS=36,40,44,48,52,56,60,64 \
+bash tools/verify_migration.sh bpt_mass
+```
+
+The migration check loads 20,000 records with ten 1,024-byte fields, uses a
+5-second collector interval and 120-second read workload, and requires bulk
+demotion, a subsequent promotion round, successful YCSB operations, and
+byte-exact sentinel reads. Individual sentinel locations are not instrumented;
+sentinel correctness across migration phases does not itself prove each
+sentinel moved.
+
+**Finalized migration rerun (in progress):** Same command above with
+`SCRATCH=/home/cc/obase-artifacts/postboot-2026-10-17/migration-final`.
+
+**RSS phase (queued after migration succeeds):**
+
+```bash
+SCRATCH=/home/cc/obase-artifacts/postboot-2026-10-17/rss \
+THREADS=8 SERVER_CPUS=0,4,8,12,16,20,24,28,32 \
+CLIENT_CPUS=36,40,44,48,52,56,60,64 \
+RECORDS=100000 SCAN_INTERVAL=15 RUN_SECONDS=180 \
+bash tools/verify_rss_workloadA.sh bpt_mass
+```
+
+This is a reduced setup check: 100,000 records, ten 1,024-byte fields,
+50/50 reads/updates, Zipfian requests, 15-second collector interval,
+180-second timed workload. It requires >=20% RSS reduction, positive swap
+usage, >=100,000 demotions in a round, >=2 pageout rounds, successful YCSB
+reads/updates, and byte-exact sentinels. RSS comes from `smaps_rollup`;
+the legacy sampler incorrectly adds THP bytes already included in RSS.
+
+**Artifacts:** `/home/cc/obase-artifacts/postboot-2026-10-17/` contains
+`integrity-server.log`, `integrity-client.log`, and separate `migration/`,
+`migration-final/`, and `rss/` directories (the last is created when queued
+work starts). Both scripts passed `bash -n` and refused to interfere with
+an existing server in explicit preflight checks.
+These are local ephemeral files; laptop backup remains deferred.

@@ -29,6 +29,11 @@ provides the throughput runner, but is not evidence that a run completed.
   `/etc/sysctl.conf`.
 - A four-worker, 20-second integrity check with migration enabled reported
   zero integrity errors. See `EXPERIMENTS.md` for its limitations.
+- On 2026-10-17, a 60-second post-reboot Masstree integrity check passed
+  with zero errors (683,641 SETs, 1,708,982 GETs, 683,641 DELETEs).
+  Approved migration/RSS script updates replace obsolete paths/commands,
+  use built Java dependencies, restrict cleanup to owned processes, and
+  measure RSS with `smaps_rollup` to avoid double-counting THP.
 
 ## Machine and pending setup
 
@@ -53,9 +58,9 @@ provides the throughput runner, but is not evidence that a run completed.
 - The smoke-check wrapper returned 1 because an overly broad error search
   matched ordinary "reference counting" migration messages. A narrower
   inspection found no error/critical, allocation, purge, or invalid-heap errors.
-- `tools/verify_migration.sh` and other legacy helpers use old absolute paths,
-  Python 2, CPU assignments, and broad process cleanup. Review and obtain
-  approval before editing them; do not run them unchanged on this machine.
+- The migration and RSS scripts are being validated after approved updates.
+  Other legacy helpers still need review for old paths, Python 2, CPU
+  assumptions, and broad process cleanup before use.
 - Full cold demotion/promotion, RSS reduction, and throughput experiments
   have not been validated on this machine. The short integrity check is not
   evidence for those results.
@@ -64,10 +69,10 @@ provides the throughput runner, but is not evidence that a run completed.
 
 ## Exact next actions
 
-1. Run a bounded server integrity check on kernel 6.8, then validate cold
-   migration and RSS reclamation. Review the legacy verification harness
-   and obtain approval for necessary script edits before using it. The
-   successful pre-reboot integrity check does not establish post-reboot behavior.
+1. Finish the running Masstree migration check, inspect its results, and run
+   the RSS-reclamation check. Commands and current artifact locations are in
+   `EXPERIMENTS.md` under POSTBOOT-2026-10-17. Inspect existing server/client
+   processes before attempting another run.
 2. Resume laptop backup setup when the user is ready. Obtain OS/SSH details,
    prepare artifact transfer commands, and verify an actual transfer.
 3. Validate migration and RSS behavior before resuming the throughput matrix
