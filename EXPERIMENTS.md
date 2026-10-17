@@ -71,3 +71,25 @@ Do not compare these untimed smoke-test operation counts to paper throughput.
 `obase-server-smoke.log`, and `obase-integrity-smoke.log`.
 The server log contains the successful second startup; the initial failure
 is recorded above. No remote artifact copy has been verified.
+
+## Post-reboot setup verification — 2026-10-16 (America/Denver)
+
+**Hypothesis:** The authorized reboot activates the installed kernel and
+preserves swap, overcommit, and the built artifacts.
+
+**Configuration/commands:** Same machine, source checkpoint `1dddaf6`;
+ran `uname -r`, `uptime -s`, `swapon --show`,
+`sysctl vm.overcommit_memory`,
+`cat /sys/kernel/mm/transparent_hugepage/enabled`,
+`ldd crest/bin/crest-server`, and checked the binaries and setup-log directory.
+
+**Results:** Running kernel `6.8.0-138-generic`; boot time
+`2026-10-16 23:43:37 UTC`; `/swapfile` active at 30 GiB, unused;
+overcommit 1; THP `madvise`. Server/client and prefixed jemalloc binaries
+exist, all server libraries resolve, and the 352 KiB setup-log directory
+remains present at `/home/cc/obase-artifacts/setup-2026-10-16/`.
+
+**Conclusion:** Kernel and memory settings survived reboot as intended.
+No workload was run in this check; post-reboot integrity, cold migration,
+and RSS reclamation remain to be validated. Observations are recorded here;
+no separate artifact file or remote artifact copy was created.

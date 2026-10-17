@@ -61,8 +61,9 @@ On the 2026-10-16 replacement machine, the first server startup failed with
 was applied. That setting is also recorded in `/etc/sysctl.conf` for reboot.
 The approved memory-backend setup installed `linux-generic-hwe-22.04`
 (`6.8.0-138-generic`) and enabled a 30 GiB `/swapfile`, mode 0600, with
-`/swapfile none swap sw 0 0` in `/etc/fstab`. The new kernel still requires a
-reboot; see `PROGRESS.md` for the current checkpoint and unfinished validation.
+`/swapfile none swap sw 0 0` in `/etc/fstab`. Post-reboot checks confirmed
+kernel `6.8.0-138-generic`, active swap, and overcommit 1; see `PROGRESS.md`
+for the current checkpoint and unfinished workload validation.
 
 ### Server builds
 

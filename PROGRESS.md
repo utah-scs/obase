@@ -37,13 +37,14 @@ provides the throughput runner, but is not evidence that a run completed.
 - THP mode: `madvise`. No swap at session start.
 - User approved installing the Ubuntu 6.8 HWE kernel and a 30 GiB swap file.
   Kernel `6.8.0-138-generic` and its initramfs are installed. `/swapfile` is
-  active (30 GiB) and registered in `/etc/fstab`. The user authorized reboot
-  on 2026-10-16. Pre-reboot checks still report kernel 5.15, active swap,
-  and `vm.overcommit_memory=1`; post-reboot verification is pending.
+  active (30 GiB) and registered in `/etc/fstab`. Following the authorized
+  reboot, checks on 2026-10-16 (America/Denver) confirmed running kernel
+  `6.8.0-138-generic`, active 30 GiB swap, `vm.overcommit_memory=1`, and THP
+  `madvise`. Crest binaries, linked libraries, and setup logs remain available.
 - User approved these two tracking files and selected their private laptop
   as the prospective artifact destination. Laptop OS, SSH connection details,
   and final destination path are still needed. The user deferred laptop backup
-  setup; no artifact transfer is verified. This does not block the authorized reboot.
+  setup; no artifact transfer is verified.
 
 ## Failures and unfinished work
 
@@ -63,10 +64,10 @@ provides the throughput runner, but is not evidence that a run completed.
 
 ## Exact next actions
 
-1. Reboot as authorized, then verify `uname -r` reports `6.8.0-138-generic`,
-   `swapon --show` reports the 30 GiB swap file, and
-   `sysctl vm.overcommit_memory` reports 1 on reconnection. If the session
-   disconnects, inspect the running kernel before issuing another reboot.
+1. Run a bounded server integrity check on kernel 6.8, then validate cold
+   migration and RSS reclamation. Review the legacy verification harness
+   and obtain approval for necessary script edits before using it. The
+   successful pre-reboot integrity check does not establish post-reboot behavior.
 2. Resume laptop backup setup when the user is ready. Obtain OS/SSH details,
    prepare artifact transfer commands, and verify an actual transfer.
 3. Validate migration and RSS behavior before resuming the throughput matrix
@@ -78,7 +79,7 @@ provides the throughput runner, but is not evidence that a run completed.
 Setup logs are collected at
 `/home/cc/obase-artifacts/setup-2026-10-16/` (also available as
 `/tmp/obase-*.log`). These are local ephemeral artifacts, not backups.
-Recovery checkpoint `2f2a1ad7026e647e7f75330e0ba2cb86a77830ec` was pushed to
+Pre-reboot checkpoint `1dddaf6099d44086ea5d6d62bca7681cbbe69a3e` was pushed to
 `origin/vp/obj`, and `git ls-remote` confirmed the same remote commit. This
 status update follows that checkpoint; use `git log -1 -- PROGRESS.md` for
 the newest record. Laptop artifact transfer has not been verified, and no
