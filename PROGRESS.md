@@ -1,5 +1,20 @@
 # OBASE progress
 
+## Repository permission update — 2026-10-17
+
+Updated `AGENTS.md` to require explicit approval before each Git commit or
+push, including automated persistence actions, and to prohibit Codex author,
+co-author, or contributor attribution. Aligned the continuity instructions
+with these requirements. The user approved committing and pushing this
+documentation update to `vp/obj` using
+`vinita-pawar <vinitapawar2912@gmail.com>`. Its parent checkpoint is
+`b7682bb0fdccba8c6c93bcce048d6dac40997bee`; use `git log -1 -- AGENTS.md`
+to identify the instruction-update commit.
+No experiments were run or artifacts created for this documentation change.
+No persistence script is configured and no backup was performed.
+Next action: review the separate local experiment-record updates before
+requesting approval to commit or push them. Artifact backup remains deferred.
+
 ## Recovery checkpoint — 2026-10-16
 
 The previous machine was lost. This session started from branch `vp/obj`,

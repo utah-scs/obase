@@ -7,6 +7,8 @@
 - Prefer existing tools and commands. If new scripts are necessary, propose the minimum number needed and wait for approval before creating them.
 - Keep approved code concise; avoid unnecessary abstractions and boilerplate.
 - Keep conversation messages short and concise.
+- Ask for and receive explicit user approval before each Git commit or push, including those performed by scripts or automated workflows. Approval to edit files does not authorize commits or pushes.
+- Do not add Codex as an author, co-author, or contributor in Git metadata, commit trailers, pull requests, or project documentation.
 - These permission requirements apply to all workflows below.
 
 ## Project Structure & Module Organization
@@ -69,7 +71,7 @@ Your work must be recoverable from Git and persistent artifact storage.
 1. Update `PROGRESS.md` after meaningful milestones.
 2. Record every experiment in `EXPERIMENTS.md`, including the hypothesis, configuration, commands, results, and conclusions.
 3. Store large outputs and checkpoints in the configured persistent storage.
-4. Commit coherent, recoverable code changes frequently.
+4. Prepare coherent, recoverable changes; commit or push only after explicit user approval for that action.
 5. Never commit secrets, credentials, datasets, or large binary artifacts.
 
 ## Before stopping
@@ -78,6 +80,6 @@ Your work must be recoverable from Git and persistent artifact storage.
 2. Record current failures, blockers, and unfinished work.
 3. Write the exact next action for a new agent session.
 4. Record the relevant Git commit and artifact locations.
-5. Run the configured persistence script and verify it succeeded.
+5. Run the configured persistence script and verify it succeeded, obtaining explicit user approval first if it performs any Git commit or push.
 
 Do not claim that work has been backed up unless the remote Git push and artifact upload have succeeded.
