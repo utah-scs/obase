@@ -39,6 +39,7 @@ namespace bpt_occ
 
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         clear();
 
         // Clean up any registered thread contexts
@@ -55,7 +56,7 @@ namespace bpt_occ
         // Clean up any nodes pending deletion
         for (Node *node : nodes_to_free)
         {
-            delete node;
+            CREST_RETIRE_DELETE(node);
         }
         nodes_to_free.clear();
     }
@@ -279,7 +280,7 @@ namespace bpt_occ
             }
             else
             {
-                jem_free(node->ikeys[i]); // raw separator copy
+                CREST_RETIRE_FREE(node->ikeys[i]); // raw separator copy
             }
         }
 
@@ -290,19 +291,20 @@ namespace bpt_occ
             {
                 destroy_node(node->children[i], free_values);
             }
-            jem_free(node->children);
+            CREST_RETIRE_FREE(node->children);
         }
         else
         {
-            jem_free(node->values);
+            CREST_RETIRE_FREE(node->values);
         }
 
-        jem_free(node->keys);
-        delete node;
+        CREST_RETIRE_FREE(node->keys);
+        CREST_RETIRE_DELETE(node);
     }
 
     void dict::clear()
     {
+        reclamation::Scope reclamationScope;
         Node *root = root_.load(std::memory_order_acquire);
         if (root != nullptr)
         {
@@ -313,6 +315,7 @@ namespace bpt_occ
 
     bool dict::empty() const
     {
+        reclamation::Scope reclamationScope;
         Node *root = root_.load(std::memory_order_acquire);
         return root == nullptr || root->num_keys == 0;
     }
@@ -499,6 +502,7 @@ namespace bpt_occ
 
     void *dict::search(const void *key, size_t key_len) const
     {
+        reclamation::Scope reclamationScope;
         ThreadContext *context = get_thread_context();
 
         while (true)
@@ -535,6 +539,7 @@ namespace bpt_occ
 
     int dict::insert(const void *key, size_t key_len, const void *value, size_t value_len)
     {
+        reclamation::Scope reclamationScope;
         ThreadContext *context = get_thread_context();
 
         while (true)
@@ -714,6 +719,7 @@ namespace bpt_occ
 
     void *dict::remove(const void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         ThreadContext *context = get_thread_context();
 
         while (true)
@@ -866,7 +872,7 @@ namespace bpt_occ
 
                 // Replace key with successor (first key in leaf).
                 // node is interior here: separator is a raw copy.
-                jem_free(node->ikeys[index]);
+                CREST_RETIRE_FREE(node->ikeys[index]);
                 node->ikeys[index] = copy_key(current->keys[0]);
 
                 // Remove successor from leaf
@@ -900,6 +906,7 @@ namespace bpt_occ
 
     void **dict::range(const void *start_key, const void *end_key, int *count) const
     {
+        reclamation::Scope reclamationScope;
         if (count == nullptr)
         {
             return nullptr;
@@ -1361,6 +1368,7 @@ namespace bpt_occ
     int dict::scanCopy(const void *start_key, size_t key_len, int n,
                        std::vector<std::pair<std::string, std::string>> &out)
     {
+        reclamation::Scope reclamationScope;
         ThreadContext *context = get_thread_context();
         while (true)
         {
@@ -1415,6 +1423,7 @@ namespace bpt_occ
      */
     int dict::searchCopy(const void *key, size_t key_len, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key, key_len);
         if (v == nullptr)
         {

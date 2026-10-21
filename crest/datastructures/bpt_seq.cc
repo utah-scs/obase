@@ -22,17 +22,20 @@ namespace bpt_seq
     // Destructor
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         clear();
     }
 
     // Utility functions
     bool dict::empty() const
     {
+        reclamation::Scope reclamationScope;
         return root_ == nullptr || root_->num_keys == 0;
     }
 
     void dict::clear()
     {
+        reclamation::Scope reclamationScope;
         if (root_ != nullptr)
         {
             destroy_node(root_);
@@ -182,7 +185,7 @@ namespace bpt_seq
             }
             else
             {
-                jem_free(node->ikeys[i]); // raw separator copy
+                CREST_RETIRE_FREE(node->ikeys[i]); // raw separator copy
             }
         }
 
@@ -193,15 +196,15 @@ namespace bpt_seq
             {
                 destroy_node(node->children[i], free_values);
             }
-            jem_free(node->children);
+            CREST_RETIRE_FREE(node->children);
         }
         else
         {
-            jem_free(node->values);
+            CREST_RETIRE_FREE(node->values);
         }
 
-        jem_free(node->keys);
-        delete node;
+        CREST_RETIRE_FREE(node->keys);
+        CREST_RETIRE_DELETE(node);
     }
 
     // Find the index where key should be inserted in node
@@ -252,6 +255,7 @@ namespace bpt_seq
     // Search for a key in the B+ tree
     void *dict::search(const void *key, size_t key_len) const
     {
+        reclamation::Scope reclamationScope;
         std::lock_guard<std::mutex> guard(op_mutex);
         if (root_ == nullptr)
         {
@@ -281,6 +285,7 @@ namespace bpt_seq
     // Insert a key-value pair into the B+ tree
     int dict::insert(const void *key, size_t key_len, const void *value, size_t value_len)
     {
+        reclamation::Scope reclamationScope;
         std::lock_guard<std::mutex> guard(op_mutex);
         // If tree is empty, create root
         if (root_ == nullptr)
@@ -491,6 +496,7 @@ namespace bpt_seq
     // Remove a key from the B+ tree
     void *dict::remove(const void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         std::lock_guard<std::mutex> guard(op_mutex);
         if (root_ == nullptr)
         {
@@ -578,7 +584,7 @@ namespace bpt_seq
 
             // Replace key with successor (first key in leaf).
             // node is interior here: separator is a raw copy.
-            jem_free(node->ikeys[index]);
+            CREST_RETIRE_FREE(node->ikeys[index]);
             node->ikeys[index] = copy_key(current->keys[0]);
 
             // Remove from right child
@@ -806,6 +812,7 @@ namespace bpt_seq
     // Range query - returns array of values for keys in range [start_key, end_key]
     void **dict::range(const void *start_key, const void *end_key, int *count) const
     {
+        reclamation::Scope reclamationScope;
         if (root_ == nullptr || count == nullptr)
         {
             if (count)
@@ -851,7 +858,7 @@ namespace bpt_seq
                     void **new_result = (void **)realloc(result, capacity * sizeof(void *));
                     if (new_result == nullptr)
                     {
-                        jem_free(result);
+                        CREST_RETIRE_FREE(result);
                         *count = 0;
                         return nullptr;
                     }
@@ -879,6 +886,7 @@ namespace bpt_seq
     int dict::scanCopy(const void *start_key, size_t key_len, int n,
                        std::vector<std::pair<std::string, std::string>> &out)
     {
+        reclamation::Scope reclamationScope;
         std::lock_guard<std::mutex> guard(op_mutex);
         Node *leaf = find_leaf_node(start_key);
         int copied = 0;
@@ -907,6 +915,7 @@ namespace bpt_seq
      */
     int dict::searchCopy(const void *key, size_t key_len, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key, key_len);
         if (v == nullptr)
         {

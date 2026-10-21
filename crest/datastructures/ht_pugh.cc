@@ -32,7 +32,7 @@ ll_node *LinkedListPugh::create_node(const void *key, size_t key_size,
     void *val_copy = jem_malloc(val_size);
     if (!val_copy)
     {
-        free(key_copy);
+        CREST_RETIRE_FREE(key_copy);
         perror("jem_malloc @ create_node val");
         exit(1);
     }
@@ -55,7 +55,7 @@ void LinkedListPugh::delete_node(ll_node *node)
 {
     if (node)
     {
-        delete node; // Will call destructor which handles cleanup
+        CREST_RETIRE_DELETE(node); // Will call destructor which handles cleanup
     }
 }
 
@@ -325,19 +325,21 @@ namespace ht_pugh
 
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         for (size_t i = 0; i < maxhtlength; i++)
         {
             LinkedListPugh *bucket = buckets[i].load(std::memory_order_relaxed);
             if (bucket)
             {
-                delete bucket;
+                CREST_RETIRE_DELETE(bucket);
             }
         }
-        delete[] buckets;
+        CREST_RETIRE_DELETE_ARRAY(buckets);
     }
 
     void *dict::search(const void *key, size_t key_size)
     {
+        reclamation::Scope reclamationScope;
         size_t bucket_idx = hash_function(key, key_size);
         LinkedListPugh *bucket = buckets[bucket_idx].load(std::memory_order_acquire);
         if (!bucket)
@@ -349,6 +351,7 @@ namespace ht_pugh
 
     int dict::insert(const void *key, size_t key_size, const void *value, size_t value_size)
     {
+        reclamation::Scope reclamationScope;
         size_t bucket_idx = hash_function(key, key_size);
         std::atomic<LinkedListPugh *> &bucket_ptr = buckets[bucket_idx];
         LinkedListPugh *bucket = bucket_ptr.load(std::memory_order_acquire);
@@ -365,7 +368,7 @@ namespace ht_pugh
             }
             else
             {
-                delete new_bucket;
+                CREST_RETIRE_DELETE(new_bucket);
                 bucket = bucket_ptr.load(std::memory_order_acquire);
             }
         }
@@ -375,6 +378,7 @@ namespace ht_pugh
 
     void *dict::remove(const void *key, size_t key_size)
     {
+        reclamation::Scope reclamationScope;
         size_t bucket_idx = hash_function(key, key_size);
         std::atomic<LinkedListPugh *> &bucket_ptr = buckets[bucket_idx];
         LinkedListPugh *bucket = bucket_ptr.load(std::memory_order_acquire);
@@ -409,6 +413,7 @@ namespace ht_pugh
      */
     int dict::searchCopy(const void *key, size_t key_size, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key, key_size);
         if (v == nullptr)
         {

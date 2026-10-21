@@ -70,7 +70,7 @@ $(DS_DEPENDENT_OBJ): $(DS_STAMP)
 # KV-store + runtime sources (compiled directly, no pass)
 SERVER_SRC=crest_server.cc ProcessCommand.cc globalConfig.cc \
 	runtime/GuideVoid.cc runtime/TagRuntime.cc \
-	runtime/soda.cc runtime/ObjectCollector.cc runtime/Sama.cc
+	runtime/soda.cc runtime/ObjectCollector.cc runtime/Sama.cc runtime/Reclamation.cc
 SERVER_OBJ=$(addprefix $(OBJ_DIR)/,$(SERVER_SRC:.cc=.o))
 
 SERVER=$(BIN_DIR)/crest-server
@@ -90,6 +90,16 @@ converter: $(GUIDE_CONVERTER)
 
 test-compiler: $(GUIDE_CONVERTER) $(GUIDE_VALIDATOR) $(VISIBILITY_EXTRACTOR) $(GUIDE_PASS)
 	compiler/tests/run_tests.sh
+
+$(BIN_DIR)/reclamation-test: tests/reclamation.cc runtime/Reclamation.cc runtime/Reclamation.h runtime/soda.cc runtime/soda.h
+	$(CC) $(CFLAGS) -o $@ tests/reclamation.cc runtime/Reclamation.cc runtime/soda.cc $(LDFLAGS) -ljemalloc
+
+$(BIN_DIR)/reclamation-stress: tests/reclamation_stress.cc $(filter-out $(OBJ_DIR)/crest_server.o,$(SERVER_OBJ)) $(OBJ_DIR)/datastructures/$(DS).o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
+
+test-reclamation: $(BIN_DIR)/reclamation-test $(BIN_DIR)/reclamation-stress
+	LD_LIBRARY_PATH="/home/vin/jemalloc/lib:$${LD_LIBRARY_PATH:-}" $(BIN_DIR)/reclamation-test
+	LD_LIBRARY_PATH="/home/vin/jemalloc/lib:$${LD_LIBRARY_PATH:-}" $(BIN_DIR)/reclamation-stress
 
 # `all` builds the whole pipeline set; the binary links only the selected
 # structure (the other objects are compile checks, not payload).
@@ -165,4 +175,4 @@ clean:
 # delete them after the build; they are the pipeline's debugging surface.
 .SECONDARY: $(DS_VIS) $(addprefix $(LLVM_DIR)/,$(addsuffix .ll,$(PIPELINE_DS)))
 
-.PHONY: all clean converter test-compiler
+.PHONY: all clean converter test-compiler test-reclamation

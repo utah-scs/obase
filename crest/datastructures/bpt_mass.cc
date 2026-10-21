@@ -526,7 +526,7 @@ namespace bpt_mass
     {
         auto ptr = get(i);
         assert(ptr != nullptr);
-        delete ptr;
+        CREST_RETIRE_DELETE(ptr);
         set(i, nullptr);
     }
 
@@ -606,25 +606,25 @@ namespace bpt_mass
         for (auto &b : borders)
         {
             // Destructor will release values and suffixes
-            delete b;
+            CREST_RETIRE_DELETE(b);
         }
         borders.clear();
 
         for (auto &i : interiors)
         {
-            delete i;
+            CREST_RETIRE_DELETE(i);
         }
         interiors.clear();
 
         for (auto &v : values)
         {
-            delete v;
+            CREST_RETIRE_DELETE(v);
         }
         values.clear();
 
         for (auto &s : suffixes)
         {
-            delete s;
+            CREST_RETIRE_DELETE(s);
         }
         suffixes.clear();
     }
@@ -1002,7 +1002,7 @@ namespace bpt_mass
             auto value = getLV(i).value;
             if (value != nullptr)
             {
-                delete value;
+                CREST_RETIRE_DELETE(value);
                 setLV(i, LinkOrValue{});
             }
         }
@@ -1314,12 +1314,14 @@ namespace bpt_mass
 
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         // Run garbage collection on destruction
         gc.run();
     }
 
     int dict::insert(void *key, size_t key_len, void *value, size_t value_len)
     {
+        reclamation::Scope reclamationScope;
         // Create key from raw bytes
         Key k = Key::fromBytes(key, key_len);
 
@@ -1365,6 +1367,7 @@ namespace bpt_mass
 
     void *dict::search(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         // Create key from raw bytes
         Key k = Key::fromBytes(key, key_len);
 
@@ -1384,6 +1387,7 @@ namespace bpt_mass
 
     void *dict::remove(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         // Create key from raw bytes
         Key k = Key::fromBytes(key, key_len);
 
@@ -1419,7 +1423,7 @@ namespace bpt_mass
             if (!cas_success)
             {
                 if (result)
-                    jem_free(result);
+                    CREST_RETIRE_FREE(result);
                 goto retry;
             }
         }
@@ -1620,7 +1624,7 @@ namespace bpt_mass
                 n1->setKeyLen(0, k2_suffix_copy->getCurrentSlice().size);
                 n1->setKeySlice(0, k2_suffix_copy->getCurrentSlice().slice);
                 n1->setLV(0, LinkOrValue(k2_val));
-                delete k2_suffix_copy;
+                CREST_RETIRE_DELETE(k2_suffix_copy);
             }
 
             // Mark unstable, then update
@@ -2442,6 +2446,7 @@ namespace bpt_mass
 
     std::pair<bool, Node *> dict::remove(Node *root, Key &k)
     {
+        reclamation::Scope reclamationScope;
         if (root == nullptr)
         {
             // Only in Layer0
@@ -2808,6 +2813,7 @@ namespace bpt_mass
     int dict::scanCopy(void *start_key, size_t key_len, int n,
                        std::vector<std::pair<std::string, std::string>> &out)
     {
+        reclamation::Scope reclamationScope;
         if (n <= 0)
         {
             return 0;
@@ -2830,6 +2836,7 @@ namespace bpt_mass
      */
     int dict::searchCopy(void *key, size_t key_len, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key, key_len);
         if (v == nullptr)
         {

@@ -41,7 +41,7 @@ namespace ht_chm
         }
 
         // Replace the old table and update metadata
-        jem_free(seg->table);
+        CREST_RETIRE_FREE(seg->table);
         seg->table = new_table;
         seg->capacity = new_cap;
         seg->threshold = new_cap * load_factor;
@@ -70,6 +70,7 @@ namespace ht_chm
 
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         for (size_t i = 0; i < num_segments; i++)
         {
             HashSegment *seg = segments[i];
@@ -81,15 +82,15 @@ namespace ht_chm
                     HashNode *next = node->next;
                     node->key.destroy();
                     node->value.destroy();
-                    jem_free(node);
+                    CREST_RETIRE_FREE(node);
                     node = next;
                 }
             }
             DESTROY_LOCK(&seg->lock);
-            jem_free(seg->table);
-            jem_free(seg);
+            CREST_RETIRE_FREE(seg->table);
+            CREST_RETIRE_FREE(seg);
         }
-        jem_free(segments);
+        CREST_RETIRE_FREE(segments);
     }
 
     size_t dict::string_hash(const void *key_data, size_t key_size)
@@ -116,6 +117,7 @@ namespace ht_chm
     int dict::insert(const void *key_data, size_t key_size,
                      const void *value_data, size_t value_size)
     {
+        reclamation::Scope reclamationScope;
         size_t seg_idx = segment_index(key_data, key_size);
         HashSegment *seg = segments[seg_idx];
         LOCK(&seg->lock);
@@ -171,6 +173,7 @@ namespace ht_chm
 
     void *dict::remove(const void *key_data, size_t key_size)
     {
+        reclamation::Scope reclamationScope;
         size_t seg_idx = segment_index(key_data, key_size);
         HashSegment *seg = segments[seg_idx];
         LOCK(&seg->lock);
@@ -193,7 +196,7 @@ namespace ht_chm
 
                 curr->key.destroy();
                 curr->value.destroy();
-                jem_free(curr);
+                CREST_RETIRE_FREE(curr);
                 seg->size--;
 
                 UNLOCK(&seg->lock);
@@ -209,6 +212,7 @@ namespace ht_chm
 
     void *dict::search(const void *key_data, size_t key_size)
     {
+        reclamation::Scope reclamationScope;
         size_t seg_idx = segment_index(key_data, key_size);
         HashSegment *seg = segments[seg_idx];
         LOCK(&seg->lock);
@@ -243,6 +247,7 @@ namespace ht_chm
      */
     int dict::searchCopy(const void *key_data, size_t key_size, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key_data, key_size);
         if (v == nullptr)
         {

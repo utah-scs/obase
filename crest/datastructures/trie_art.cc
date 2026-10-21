@@ -255,29 +255,29 @@ namespace trie_art
         case NTypes::N4:
         {
             auto n = static_cast<N4 *>(node);
-            delete n;
+            CREST_RETIRE_DELETE(n);
             return;
         }
         case NTypes::N16:
         {
             auto n = static_cast<N16 *>(node);
-            delete n;
+            CREST_RETIRE_DELETE(n);
             return;
         }
         case NTypes::N48:
         {
             auto n = static_cast<N48 *>(node);
-            delete n;
+            CREST_RETIRE_DELETE(n);
             return;
         }
         case NTypes::N256:
         {
             auto n = static_cast<N256 *>(node);
-            delete n;
+            CREST_RETIRE_DELETE(n);
             return;
         }
         }
-        delete node;
+        CREST_RETIRE_DELETE(node);
     }
 
     std::tuple<N *, uint8_t> N::getSecondChild(N *node, const uint8_t key)
@@ -392,7 +392,7 @@ namespace trie_art
     {
         if (len > stackLen && data != stackKey)
         {
-            delete[] data;
+            CREST_RETIRE_DELETE_ARRAY(data);
             data = nullptr;
         }
     }
@@ -416,7 +416,7 @@ namespace trie_art
     {
         if (len > stackLen && data != stackKey)
         {
-            delete[] data;
+            CREST_RETIRE_DELETE_ARRAY(data);
         }
         if (length <= stackLen)
         {
@@ -435,7 +435,7 @@ namespace trie_art
     {
         if (len > stackLen && data != stackKey)
         {
-            delete[] data;
+            CREST_RETIRE_DELETE_ARRAY(data);
         }
         len = strlen(key);
         if (len <= stackLen)
@@ -483,7 +483,7 @@ namespace trie_art
             return;
         if (len > stackLen && data != stackKey)
         {
-            delete[] data;
+            CREST_RETIRE_DELETE_ARRAY(data);
         }
         len = newLen;
         if (len > stackLen)
@@ -1128,6 +1128,7 @@ namespace trie_art
 
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         // Hold write lock to ensure no other thread is accessing the structure
         std::unique_lock<std::shared_mutex> lock(rw_mutex);
 
@@ -1160,7 +1161,7 @@ namespace trie_art
         void *valueCopy = jem_malloc(value_len);
         if (!valueCopy)
         {
-            jem_free(keyCopy);
+            CREST_RETIRE_FREE(keyCopy);
             return nullptr;
         }
 
@@ -1205,7 +1206,7 @@ namespace trie_art
             // This should only happen for the root node
             root = nBig;
         }
-        delete n;
+        CREST_RETIRE_DELETE(n);
     }
 
     template <typename curN, typename smallerN>
@@ -1222,11 +1223,12 @@ namespace trie_art
         nSmall->remove(key);
 
         N::change(parentNode, keyParent, nSmall);
-        delete n;
+        CREST_RETIRE_DELETE(n);
     }
 
     int dict::insert(void *key, size_t key_len, void *value, size_t value_len)
     {
+        reclamation::Scope reclamationScope;
         if (!key || !value || key_len == 0 || value_len == 0)
             return 0;
 
@@ -1260,7 +1262,7 @@ namespace trie_art
 
             if (!node)
             {
-                delete kvp;
+                CREST_RETIRE_DELETE(kvp);
                 return 0;
             }
 
@@ -1277,7 +1279,7 @@ namespace trie_art
                 auto newNode = new N4(node->getPrefix(), nextLevel - level);
                 if (!newNode)
                 {
-                    delete kvp;
+                    CREST_RETIRE_DELETE(kvp);
                     return 0;
                 }
 
@@ -1307,7 +1309,7 @@ namespace trie_art
             if (level >= k.getKeyLen())
             {
                 // This shouldn't happen in a normal insert operation
-                delete kvp;
+                CREST_RETIRE_DELETE(kvp);
                 return 0;
             }
 
@@ -1359,7 +1361,7 @@ namespace trie_art
                     N::change(node, k[level], N::setLeaf(kvp));
 
                     // Immediately delete the old KeyValuePair
-                    delete existingKvp;
+                    CREST_RETIRE_DELETE(existingKvp);
                     return 1;
                 }
 
@@ -1379,7 +1381,7 @@ namespace trie_art
                 else
                 {
                     // If existingKvp is somehow null, we can't continue safely
-                    delete kvp;
+                    CREST_RETIRE_DELETE(kvp);
                     return 0;
                 }
 
@@ -1396,7 +1398,7 @@ namespace trie_art
                 auto n4 = new N4(&k[level], prefixLength);
                 if (!n4)
                 {
-                    delete kvp;
+                    CREST_RETIRE_DELETE(kvp);
                     return 0;
                 }
 
@@ -1411,6 +1413,7 @@ namespace trie_art
 
     void *dict::search(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         if (!key || key_len == 0)
             return nullptr;
 
@@ -1484,6 +1487,7 @@ namespace trie_art
 
     void *dict::remove(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         if (!key || key_len == 0)
             return nullptr;
 
@@ -1571,8 +1575,8 @@ namespace trie_art
                             N::change(parentNode, parentKey, secondNodeN);
 
                             // Immediately delete the KeyValuePair and node
-                            delete kvp;
-                            delete node;
+                            CREST_RETIRE_DELETE(kvp);
+                            CREST_RETIRE_DELETE(node);
                         }
                         else
                         {
@@ -1581,8 +1585,8 @@ namespace trie_art
                             secondNodeN->addPrefixBefore(node, secondNodeK);
 
                             // Immediately delete the KeyValuePair and node
-                            delete kvp;
-                            delete node;
+                            CREST_RETIRE_DELETE(kvp);
+                            CREST_RETIRE_DELETE(node);
                         }
                     }
                     else
@@ -1617,7 +1621,7 @@ namespace trie_art
                         }
 
                         // Immediately delete the KeyValuePair
-                        delete kvp;
+                        CREST_RETIRE_DELETE(kvp);
                     }
                     return result;
                 }
@@ -1924,7 +1928,7 @@ namespace trie_art
                 void *valueCopy = jem_malloc(kvp->value_len);
                 if (!valueCopy)
                 {
-                    jem_free(keyCopy);
+                    CREST_RETIRE_FREE(keyCopy);
                     continue;
                 }
 
@@ -2233,6 +2237,7 @@ namespace trie_art
     int dict::scanCopy(void *start_key, size_t key_len, int n,
                        std::vector<std::pair<std::string, std::string>> &out)
     {
+        reclamation::Scope reclamationScope;
         std::shared_lock<std::shared_mutex> lock(rw_mutex);
         if (root == nullptr || n <= 0)
         {
@@ -2250,6 +2255,7 @@ namespace trie_art
      */
     int dict::searchCopy(void *key, size_t key_len, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key, key_len);
         if (v == nullptr)
         {

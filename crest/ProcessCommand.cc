@@ -15,6 +15,7 @@
 
 bool KeyValueStore::set(const std::string &key, const std::string &value)
 {
+    reclamation::Scope reclamationScope;
     int ret = theDict.insert((void *)key.c_str(), key.size() + 1, (void *)value.c_str(), value.size() + 1);
     if (ret == 0)
     {
@@ -26,6 +27,7 @@ bool KeyValueStore::set(const std::string &key, const std::string &value)
 
 std::string KeyValueStore::get(const std::string &key)
 {
+    reclamation::Scope reclamationScope;
     // Use searchCopy, not search: search() hands back a raw pointer whose
     // TAG/ATC protection ends when the operation returns -- copying it here
     // would race with migration freeing the old object. searchCopy performs
@@ -41,6 +43,7 @@ std::string KeyValueStore::get(const std::string &key)
 
 std::string KeyValueStore::scan(const std::string &start_key, int n)
 {
+    reclamation::Scope reclamationScope;
     // Length-prefixed pairs: values contain spaces, so the client parses by
     // byte offsets, not tokens. Values never contain '\n' (the framing
     // delimiter); the store is line-framed end to end.
@@ -61,6 +64,7 @@ std::string KeyValueStore::scan(const std::string &start_key, int n)
 
 bool KeyValueStore::del(const std::string &key)
 {
+    reclamation::Scope reclamationScope;
     spdlog::trace("DEL {}", key);
 
     void *res = theDict.remove((void *)key.c_str(), key.size() + 1);

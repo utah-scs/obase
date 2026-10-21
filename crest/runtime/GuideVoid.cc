@@ -261,12 +261,24 @@ uint8_t Guide<void>::getATC() const
 
 void Guide<void>::destroy()
 {
-    if (ptr != 0)
+    // Atomically detach the exact address/heap pair. This also vetoes an
+    // in-flight migration before retiring the old allocation.
+    const uintptr_t old = __atomic_exchange_n(&ptr, 0, __ATOMIC_ACQ_REL);
+    soda_.Set0((((uint64_t)&ptr - (uint64_t)global_addr_start) / 8));
+    void *address = reinterpret_cast<void *>(old & ADDRESS_MASK);
+    if (!address) return;
+    const auto heap = (old & HEAP_ID_MASK) >> HEAP_ID_SHIFT;
+    MemType type;
+    switch (heap)
     {
-        soda_.Set0((((uint64_t)&ptr - (uint64_t)global_addr_start) / 8));
+    case 0: type = MemType::NEW_HEAP; break;
+    case 1: type = MemType::DRAM_2MB_THP; break;
+    case 2: type = MemType::DRAM; break;
+    default:
+        spdlog::critical("destroy: invalid heap id {} for guide {:p}", heap, (void *)this);
+        std::abort();
     }
-
-    g_sama->free(reinterpret_cast<void *>(getCanonicalAddress()), getMemType());
+    g_sama->free(address, type);
 }
 
 // thread_local storage of scope guards

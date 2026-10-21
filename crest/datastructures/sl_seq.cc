@@ -39,8 +39,8 @@ struct sl_node *allocate_node_unlinked(void *key, size_t key_len,
 
     if (!node->key || !node->val)
     {
-        jem_free(node->key);
-        jem_free(node->val);
+        CREST_RETIRE_FREE(node->key);
+        CREST_RETIRE_FREE(node->val);
         spdlog::error("jem_malloc @ insert");
         return 0; // Memory allocation failed
     }
@@ -80,7 +80,7 @@ void node_delete(struct sl_node *node)
         node->key.destroy();
     if (node->val)
         node->val.destroy();
-    jem_free((void *)node);
+    CREST_RETIRE_FREE((void *)node);
 }
 
 namespace sl_seq
@@ -99,9 +99,9 @@ namespace sl_seq
         if (!min_key || !max_key)
         {
             if (min_key)
-                jem_free(min_key);
+                CREST_RETIRE_FREE(min_key);
             if (max_key)
-                jem_free(max_key);
+                CREST_RETIRE_FREE(max_key);
             perror("jem_malloc @ constructor");
             exit(1);
         }
@@ -121,6 +121,7 @@ namespace sl_seq
     // Destructor
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         struct sl_node *node, *next;
 
         node = head;
@@ -153,6 +154,7 @@ namespace sl_seq
     // Search for a key and return pointer to its value
     void *dict::search(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         std::lock_guard<std::mutex> guard(op_mutex);
         struct sl_node *node, *next;
 
@@ -180,6 +182,7 @@ namespace sl_seq
     // Insert or update a key-value pair
     int dict::insert(void *key, size_t key_len, void *val, size_t val_len)
     {
+        reclamation::Scope reclamationScope;
         std::lock_guard<std::mutex> guard(op_mutex);
         int level, result = 0;
         struct sl_node *node, *next;
@@ -244,6 +247,7 @@ namespace sl_seq
     // Remove a key-value pair and return pointer to the value
     void *dict::remove(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         std::lock_guard<std::mutex> guard(op_mutex);
         void *result = NULL;
         struct sl_node *node, *next;
@@ -292,6 +296,7 @@ namespace sl_seq
     int dict::scanCopy(void *start_key, size_t key_len, int n,
                        std::vector<std::pair<std::string, std::string>> &out)
     {
+        reclamation::Scope reclamationScope;
         std::lock_guard<std::mutex> guard(op_mutex);
         struct sl_node *node, *next;
 
@@ -328,6 +333,7 @@ namespace sl_seq
      */
     int dict::searchCopy(void *key, size_t key_len, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key, key_len);
         if (v == nullptr)
         {

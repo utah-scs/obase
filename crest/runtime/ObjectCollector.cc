@@ -77,6 +77,8 @@ void ObjectCollector::clearAllAccessBits()
     uint64_t index = 1;
     while (soda_.FindNextSetBit(&index))
     {
+        reclamation::Scope reclamationScope;
+        if (!soda_.Get(index)) { ++index; continue; }
         uintptr_t address = reinterpret_cast<uintptr_t>(global_addr_start) + (index * 8);
         clearAccessBit(reinterpret_cast<uintptr_t *>(address));
         index++;
@@ -245,11 +247,11 @@ void ObjectCollector::updateObjectTrackingWithStats()
 
     while (soda_.FindNextSetBit(&index))
     {
+        reclamation::Scope reclamationScope;
         // Re-check the bit right before touching the slot: the guide may have
         // been destroyed (its bit cleared) since FindNextSetBit observed it.
-        // This narrows -- but does not fully close -- the window in which the
-        // OC can read a freed guide slot; closing it needs reclamation that
-        // quiesces against the OC (see notes in the repo discussion).
+        // The reclamation scope pins any retired slot until this iteration
+        // finishes; unregistering SODA slots precedes their grace period.
         if (!soda_.Get(index))
         {
             index++;
@@ -419,6 +421,7 @@ void ObjectCollector::promoteHotObjects()
     uint64_t index = 1;
     while (soda_.FindNextSetBit(&index))
     {
+        reclamation::Scope reclamationScope;
         if (!soda_.Get(index)) // re-check: slot may have been freed since the scan
         {
             index++;
@@ -468,6 +471,7 @@ void ObjectCollector::demoteColdObjects()
     uint64_t index = 1;
     while (soda_.FindNextSetBit(&index))
     {
+        reclamation::Scope reclamationScope;
         if (!soda_.Get(index)) // re-check: slot may have been freed since the scan
         {
             index++;

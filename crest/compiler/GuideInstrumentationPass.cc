@@ -733,6 +733,14 @@ namespace
         bool shouldSkipFunction(const Function &F)
         {
             StringRef Name = F.getName();
+            // Reclamation callbacks execute only after the grace period and
+            // may physically delete their Guide-owning argument. A TAG around
+            // that callback would clean up slots after operator delete, when
+            // another thread could already have reused the same address.
+            if (Name.contains("11reclamation"))
+            {
+                return true;
+            }
             if (Name.startswith("_ZN5Guide") &&
                 (Name.contains("destroy") ||
                  Name.contains("operator=") ||

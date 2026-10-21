@@ -10,6 +10,7 @@
 #include <mutex>
 #include "/home/vin/jemalloc/include/jemalloc/jemalloc.h"
 #include "Sama.h"
+#include "Reclamation.h"
 #include "globalConfig.h"
 
 extern Sama *g_sama;
@@ -691,6 +692,9 @@ public:
 class ActiveScopeGuard
 {
 private:
+    // Must outlive the destructor's ATC cleanup. Instrumented functions
+    // release their explicit dictionary scopes before destroyTAG runs.
+    reclamation::Scope reclamationScope;
     // Track nesting level for the thread
     static thread_local int publicFuncNestingLevel;
     // Each thread has only one actual set of pointers

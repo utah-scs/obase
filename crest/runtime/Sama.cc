@@ -1,4 +1,5 @@
 #include "Sama.h"
+#include "Reclamation.h"
 #include <sys/mman.h>
 #include <cassert>
 #include <cstdio>
@@ -39,6 +40,7 @@ Sama::Sama(std::vector<MemoryType> types)
 
 Sama::~Sama()
 {
+    reclamation::drain();
     destroyAllArenas();
     CleanupJemalloc();
 }
@@ -195,7 +197,7 @@ void Sama::free(void *ptr, MemoryType type)
 {
     if (type == MemoryType::NEW_HEAP)
     {
-        jem_free(ptr);
+        reclamation::retireJemalloc(ptr, __FILE__, __LINE__);
         return;
     }
 
@@ -203,11 +205,12 @@ void Sama::free(void *ptr, MemoryType type)
     {
         if (info.type == type)
         {
-            jem_dallocx(ptr, info.mallocx_flags);
+            reclamation::retireJemallocArena(ptr, info.mallocx_flags, __FILE__, __LINE__);
             return;
         }
     }
-    spdlog::error("Freeing pointer {} in unkown arena type {}", fmt::ptr(ptr), static_cast<int>(type));
+    spdlog::critical("Freeing pointer {} in unknown arena type {}", fmt::ptr(ptr), static_cast<int>(type));
+    std::abort();
 }
 
 void *Sama::extent_alloc_hook_dram(extent_hooks_t *extent_hooks, void *new_addr,

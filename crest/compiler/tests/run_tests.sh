@@ -85,6 +85,24 @@ for ds in ht_harris ht_pugh ht_chm sl_seq sl_fraser sl_hierlihy bpt_seq bpt_occ 
   fi
 done
 
+# --- reclamation callbacks must not retain TAG slots past operator delete -
+RECLAIM_TMP=$(mktemp -d)
+if bin/visibility-extractor -o "$RECLAIM_TMP/reclamation_delete.cc.visibility" \
+     "$TESTS/reclamation_delete.cc" -- $CFLAGS >"$RECLAIM_TMP/visibility.log" 2>&1 \
+&& clang++-12 $CFLAGS -S -emit-llvm "$TESTS/reclamation_delete.cc" -o "$RECLAIM_TMP/input.ll" \
+&& VISIBILITY_DATA_DIR="$RECLAIM_TMP" opt-12 -load bin/llvm/libGuideInstrumentation.so \
+     -guide-instrumentation -S "$RECLAIM_TMP/input.ll" -o "$RECLAIM_TMP/output.ll" \
+     >"$RECLAIM_TMP/pass.log" 2>&1 \
+&& grep -q '11reclamation12retireDelete' "$RECLAIM_TMP/input.ll" \
+&& grep -q 'Created scope guard.*read_reclaimed_value' "$RECLAIM_TMP/pass.log" \
+&& ! grep -q 'Created scope guard.*11reclamation' "$RECLAIM_TMP/pass.log"; then
+  ok "instrument/reclamation callbacks skip TAG cleanup after delete"
+else
+  bad "instrument/reclamation callbacks"
+  tail -15 "$RECLAIM_TMP/pass.log" 2>/dev/null
+fi
+rm -rf "$RECLAIM_TMP"
+
 echo "----------------------------------------"
 echo "compiler pass tests: $PASS passed, $FAIL failed"
 [ $FAIL -eq 0 ]

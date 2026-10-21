@@ -32,6 +32,35 @@ Useful variants: `make all ENABLE_LLVM_PASS=0` builds without OBASE
 instrumentation (baseline comparisons); `make converter` builds the
 annotation-conversion tool used in [ADOPTING.md](ADOPTING.md).
 
+### Shared-object reclamation
+
+Shared data-structure objects and SAMA buffers use deferred reclamation in
+both baseline and OBASE builds. Dictionary operations enter nested lifetime
+scopes; retired allocations are freed only after readers that could have
+observed them have exited. OBASE's TAG cleanup and each migration-scanner
+iteration participate in the same protection. Guide slots are removed from
+SODA before their reclamation grace period starts.
+
+Use `CREST_RETIRE_DELETE`, `CREST_RETIRE_DELETE_ARRAY` (raw arrays without
+Guide fields), or `CREST_RETIRE_FREE` for data-structure storage; managed
+buffers continue to use `Sama::free`. Unlink shared objects before the outer
+operation scope exits. A caller retaining a borrowed `search()` pointer must
+hold a `reclamation::Scope` across lookup and use; prefer `searchCopy()` for
+an independently owned result. Raw-pointer escapes beyond these scopes are
+not protected. These rules concern allocation lifetime, not synchronization
+of concurrent writes to the contents.
+
+Always-on diagnostics abort on duplicate pending retirement, tagged free
+addresses, invalid heap types, and shutdown drains while readers are active.
+They are not an allocation registry and cannot identify every arbitrary bad
+pointer or a second free after an address has already been reclaimed/reused.
+Bookkeeping adds synchronization and may temporarily retain retired memory;
+performance comparisons should rebuild both modes and rerun their trials.
+
+Run `make test-reclamation DS=bpt_mass` for lifetime/diagnostic tests and a
+concurrent same-key GET/SET regression. Use a separate `BIN_DIR` when testing
+`ENABLE_LLVM_PASS=0` to keep the two builds independent.
+
 ## Run
 
 ```bash

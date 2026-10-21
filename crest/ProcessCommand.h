@@ -68,10 +68,11 @@ public:
      */
     std::atomic<uint8_t> ObaseRTMode;
 
+    // Allocator must outlive dictionary destruction and deferred frees.
+    Sama sama;
     dict theDict;
 
     std::unique_ptr<ObjectCollector> scanAndMigrator;
-    Sama sama;
 
 private:
     bool profilingEnabled = false;

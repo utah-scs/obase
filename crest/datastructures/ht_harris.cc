@@ -44,7 +44,7 @@ namespace ht_harris
         while (curr)
         {
             HarrisNode<void *, void *> *next = curr->next.load();
-            delete curr;
+            CREST_RETIRE_DELETE(curr);
             curr = next;
         }
     }
@@ -69,7 +69,7 @@ namespace ht_harris
                     {
                         newNode->key.destroy();
                         newNode->value.destroy();
-                        delete newNode;
+                        CREST_RETIRE_DELETE(newNode);
                     }
                     return false;
                 }
@@ -136,7 +136,7 @@ namespace ht_harris
                 {
                     newNode->key.destroy();
                     newNode->value.destroy();
-                    delete newNode;
+                    CREST_RETIRE_DELETE(newNode);
                 }
 
                 return true;
@@ -204,7 +204,7 @@ namespace ht_harris
         {
             curr->key.destroy();
             curr->value.destroy();
-            delete curr;
+            CREST_RETIRE_DELETE(curr);
         }
 
         return value;
@@ -305,7 +305,7 @@ namespace ht_harris
             }
             else
             {
-                delete new_bucket;
+                CREST_RETIRE_DELETE(new_bucket);
             }
             bucket = buckets[idx].load(std::memory_order_acquire);
         }
@@ -326,19 +326,21 @@ namespace ht_harris
 
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         for (size_t i = 0; i < bucket_count; ++i)
         {
             dict::HarrisLinkedList *bucket = buckets[i].load(std::memory_order_relaxed);
             if (bucket)
             {
-                delete bucket;
+                CREST_RETIRE_DELETE(bucket);
             }
         }
-        delete[] buckets;
+        CREST_RETIRE_DELETE_ARRAY(buckets);
     }
 
     bool dict::insert(void *key, size_t key_size, void *value, size_t value_size)
     {
+        reclamation::Scope reclamationScope;
         size_t idx = hash(key, key_size);
         dict::HarrisLinkedList *bucket = get_or_create_bucket(idx);
         bool result = bucket->insert(key, key_size, value, value_size);
@@ -349,6 +351,7 @@ namespace ht_harris
 
     void *dict::remove(void *key, size_t key_size)
     {
+        reclamation::Scope reclamationScope;
         size_t idx = hash(key, key_size);
         dict::HarrisLinkedList *bucket = buckets[idx].load(std::memory_order_acquire);
         if (!bucket)
@@ -362,6 +365,7 @@ namespace ht_harris
 
     void *dict::search(void *key, size_t key_size)
     {
+        reclamation::Scope reclamationScope;
         size_t idx = hash(key, key_size);
         dict::HarrisLinkedList *bucket = buckets[idx].load(std::memory_order_acquire);
         if (!bucket)
@@ -388,6 +392,7 @@ namespace ht_harris
      */
     int dict::searchCopy(void *key, size_t key_size, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key, key_size);
         if (v == nullptr)
         {

@@ -44,8 +44,8 @@ namespace sl_fraser
 
         if (!node->key || !node->val)
         {
-            jem_free(node->key);
-            jem_free(node->val);
+            CREST_RETIRE_FREE(node->key);
+            CREST_RETIRE_FREE(node->val);
             spdlog::error("jem_malloc @ insert");
             return 0; // Memory allocation failed
         }
@@ -88,7 +88,7 @@ namespace sl_fraser
             node->key.destroy();
         if (free_val && node->val)
             node->val.destroy();
-        jem_free((void *)node);
+        CREST_RETIRE_FREE((void *)node);
     }
 
     // Mark all next pointers in a node as logically deleted
@@ -191,9 +191,9 @@ namespace sl_fraser
         if (!min_key || !max_key)
         {
             if (min_key)
-                jem_free(min_key);
+                CREST_RETIRE_FREE(min_key);
             if (max_key)
-                jem_free(max_key);
+                CREST_RETIRE_FREE(max_key);
             perror("jem_malloc @ constructor");
             exit(1);
         }
@@ -216,6 +216,7 @@ namespace sl_fraser
     // Destructor
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         struct sl_node *node, *next;
 
         node = head;
@@ -251,6 +252,7 @@ namespace sl_fraser
     // Search for a key and return pointer to its value
     void *dict::search(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         struct sl_node *succs[MAXLEVEL];
         void *result = NULL;
 
@@ -269,6 +271,7 @@ namespace sl_fraser
     // Insert or update a key-value pair
     int dict::insert(void *key, size_t key_len, void *val, size_t val_len)
     {
+        reclamation::Scope reclamationScope;
         struct sl_node *preds[MAXLEVEL], *succs[MAXLEVEL];
         struct sl_node *new_node, *pred, *succ, *new_next;
         int result = 0;
@@ -351,7 +354,7 @@ namespace sl_fraser
                 // We'll retry the loop with the updated value
                 // free val_copy
                 if (val_copy)
-                    jem_free(val_copy);
+                    CREST_RETIRE_FREE(val_copy);
 
             } while (true);
 
@@ -432,6 +435,7 @@ namespace sl_fraser
     // Remove a key-value pair and return pointer to the value
     void *dict::remove(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         struct sl_node *succs[MAXLEVEL];
         void *result = NULL;
 
@@ -488,6 +492,7 @@ namespace sl_fraser
     int dict::scanCopy(void *start_key, size_t key_len, int n,
                        std::vector<std::pair<std::string, std::string>> &out)
     {
+        reclamation::Scope reclamationScope;
         struct sl_node *succs[MAXLEVEL];
         fraser_search(start_key, NULL, succs);
 
@@ -518,6 +523,7 @@ namespace sl_fraser
      */
     int dict::searchCopy(void *key, size_t key_len, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key, key_len);
         if (v == nullptr)
         {

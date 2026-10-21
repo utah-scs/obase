@@ -67,7 +67,7 @@ namespace sl_hierlihy
     void dict::delete_sl_marked(sl_marked *node)
     {
         DESTROY_LOCK(ND_GET_LOCK(node));
-        jem_free((void *)node);
+        CREST_RETIRE_FREE((void *)node);
     }
 
     // Random number utility
@@ -144,6 +144,7 @@ namespace sl_hierlihy
     // Destructor implementation
     dict::~dict()
     {
+        reclamation::Scope reclamationScope;
         sl_marked *node, *next;
         node = head;
         while (node != NULL)
@@ -155,12 +156,13 @@ namespace sl_hierlihy
             delete_sl_marked(node);
             node = next;
         }
-        jem_free(lock);
+        CREST_RETIRE_FREE(lock);
     }
 
     // Search implementation
     void *dict::search(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         void *result = NULL;
         sl_marked *node = optimistic_left_search(key);
 
@@ -182,6 +184,7 @@ namespace sl_hierlihy
      */
     int dict::insert(void *key, size_t key_len, void *val, size_t val_len)
     {
+        reclamation::Scope reclamationScope;
         // Arrays to hold predecessor and successor nodes at each level
         sl_marked *succs[HERLIHY_MAX_MAX_LEVEL];
         sl_marked *preds[HERLIHY_MAX_MAX_LEVEL];
@@ -314,6 +317,7 @@ namespace sl_hierlihy
     // Remove implementation
     void *dict::remove(void *key, size_t key_len)
     {
+        reclamation::Scope reclamationScope;
         sl_marked *succs[HERLIHY_MAX_MAX_LEVEL];
         sl_marked *preds[HERLIHY_MAX_MAX_LEVEL];
         sl_marked *node_to_remove, *prev_pred;
@@ -524,6 +528,7 @@ namespace sl_hierlihy
     int dict::scanCopy(void *start_key, size_t key_len, int n,
                        std::vector<std::pair<std::string, std::string>> &out)
     {
+        reclamation::Scope reclamationScope;
         sl_marked *pred = head, *curr = NULL;
         for (int i = (pred->toplevel - 1); i >= 0; i--)
         {
@@ -560,6 +565,7 @@ namespace sl_hierlihy
      */
     int dict::searchCopy(void *key, size_t key_len, std::string &out)
     {
+        reclamation::Scope reclamationScope;
         void *v = search(key, key_len);
         if (v == nullptr)
         {
