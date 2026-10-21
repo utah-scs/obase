@@ -136,6 +136,8 @@ namespace sl_seq
     // Get the number of elements in the list
     int dict::length()
     {
+        reclamation::Scope reclamationScope;
+        std::lock_guard<std::mutex> guard(op_mutex);
         int count = 0;
         struct sl_node *node;
 

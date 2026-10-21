@@ -30,12 +30,14 @@ namespace bpt_seq
     bool dict::empty() const
     {
         reclamation::Scope reclamationScope;
+        std::lock_guard<std::mutex> guard(op_mutex);
         return root_ == nullptr || root_->num_keys == 0;
     }
 
     void dict::clear()
     {
         reclamation::Scope reclamationScope;
+        std::lock_guard<std::mutex> guard(op_mutex);
         if (root_ != nullptr)
         {
             destroy_node(root_);
@@ -317,49 +319,39 @@ namespace bpt_seq
         Node *child = parent->children[index];
         Node *new_node = create_node(child->is_leaf);
 
-        // Set up new node
-        new_node->num_keys = (degree_ - 1) / 2;
-
-        // Copy keys and values/children to new node
-        int mid = degree_ / 2;
-
-        // First, save the middle key for non-leaf splits
+        // Leaf splits copy their separator into the parent. Interior splits
+        // move the pivot out: no key or child may belong to both halves.
+        const int mid = child->is_leaf ? degree_ / 2 : child->num_keys / 2;
+        const int right_start = mid + (child->is_leaf ? 0 : 1);
+        new_node->num_keys = child->num_keys - right_start;
         void *middle_key = nullptr;
         if (!child->is_leaf)
         {
-            middle_key = copy_key(child->ikeys[mid]);
+            middle_key = child->ikeys[mid];
+            child->ikeys[mid] = nullptr;
         }
 
-        // Copy the right half of the keys to the new node
-        for (int i = 0; i < new_node->num_keys; i++)
+        for (int i = 0; i < new_node->num_keys; ++i)
         {
-            // Only nullify immediately for leaf nodes
-            // For non-leaf nodes, we'll nullify after we've handled the middle key
             if (child->is_leaf)
             {
-                new_node->keys[i] = child->keys[mid + i];
-                child->keys[mid + i] = nullptr;
-                new_node->values[i] = child->values[mid + i];
-                child->values[mid + i] = nullptr;
+                new_node->keys[i] = child->keys[right_start + i];
+                new_node->values[i] = child->values[right_start + i];
+                child->keys[right_start + i] = nullptr;
+                child->values[right_start + i] = nullptr;
             }
             else
             {
-                new_node->ikeys[i] = child->ikeys[mid + i];
+                new_node->ikeys[i] = child->ikeys[right_start + i];
+                child->ikeys[right_start + i] = nullptr;
             }
         }
-
-        // Copy children pointers if not a leaf
         if (!child->is_leaf)
         {
-            for (int i = 0; i <= new_node->num_keys; i++)
+            for (int i = 0; i <= new_node->num_keys; ++i)
             {
-                new_node->children[i] = child->children[mid + i];
-            }
-
-            // Now it's safe to nullify the keys in the old node
-            for (int i = 0; i < new_node->num_keys; i++)
-            {
-                child->ikeys[mid + i] = nullptr;
+                new_node->children[i] = child->children[right_start + i];
+                child->children[right_start + i] = nullptr;
             }
         }
 
@@ -471,7 +463,7 @@ namespace bpt_seq
                 split_child(node, index);
 
                 // After split, the new key might go into a different child
-                if (compare_keys(node->ikeys[index], key) < 0)
+                if (compare_keys(node->ikeys[index], key) <= 0)
                 {
                     index++;
                 }
@@ -531,6 +523,8 @@ namespace bpt_seq
         // Root has no keys but has a single child - make child the new root
         Node *old_root = root_;
         root_ = root_->children[0];
+
+        old_root->children[0] = nullptr;
 
         // Free old root (but don't free values)
         old_root->num_keys = 0;
@@ -777,6 +771,7 @@ namespace bpt_seq
             for (int i = 0; i <= right_child->num_keys; i++)
             {
                 left_child->children[left_child->num_keys + 1 + i] = right_child->children[i];
+                right_child->children[i] = nullptr;
             }
         }
         else
@@ -813,6 +808,7 @@ namespace bpt_seq
     void **dict::range(const void *start_key, const void *end_key, int *count) const
     {
         reclamation::Scope reclamationScope;
+        std::lock_guard<std::mutex> guard(op_mutex);
         if (root_ == nullptr || count == nullptr)
         {
             if (count)
@@ -858,7 +854,9 @@ namespace bpt_seq
                     void **new_result = (void **)realloc(result, capacity * sizeof(void *));
                     if (new_result == nullptr)
                     {
-                        CREST_RETIRE_FREE(result);
+                        // This unpublished result buffer belongs to libc,
+                        // not the jemalloc-managed nodes and values.
+                        std::free(result);
                         *count = 0;
                         return nullptr;
                     }

@@ -9,7 +9,10 @@ namespace ht_chm
 
     HashSegment *dict::create_segment(size_t capacity)
     {
-        HashSegment *seg = (HashSegment *)aligned_alloc(CACHE_LINE_SIZE, sizeof(HashSegment));
+        // Segments use the same allocator as the deferred jemalloc free path.
+        HashSegment *seg = (HashSegment *)jem_mallocx(sizeof(HashSegment), MALLOCX_ALIGN(CACHE_LINE_SIZE));
+        if (!seg)
+            throw std::bad_alloc();
         INIT_LOCK(&seg->lock);
         seg->capacity = capacity;
         seg->size = 0;
@@ -134,10 +137,16 @@ namespace ht_chm
                 // a live slot first -- transient SODA Set0 leaks ATC)
                 void *old_val = static_cast<void *>(curr->value); // pins via ATC
                 MemType old_type = curr->value.getMemType();
-                curr->value = jem_malloc(value_size);
-                curr->value.setHeapId(0); // set heap id to START heap
+                void *replacement = jem_malloc(value_size);
+                if (!replacement)
+                {
+                    UNLOCK(&seg->lock);
+                    return 0;
+                }
+                // A previous search may still be copying outside the lock.
+                memcpy(replacement, value_data, value_size);
+                curr->value = replacement;
                 curr->value_size = value_size;
-                memcpy(curr->value, value_data, value_size);
                 g_sama->free(old_val, old_type);
                 UNLOCK(&seg->lock);
                 return 1;
@@ -228,9 +237,10 @@ namespace ht_chm
                 // memcpy(value_copy, curr->value, curr->value_size);
                 // UNLOCK(&seg->lock);
 
-                // don't need to copy value, just return reference
+                // Capture the selected value while its node is locked.
+                void *value = curr->value;
                 UNLOCK(&seg->lock);
-                return curr->value;
+                return value;
             }
             curr = curr->next;
         }

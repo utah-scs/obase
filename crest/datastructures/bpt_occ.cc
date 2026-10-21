@@ -695,7 +695,7 @@ namespace bpt_occ
                 split_child(node, child_idx);
 
                 // Decide which child to use after split
-                if (compare_keys(node->ikeys[child_idx], key) < 0)
+                if (compare_keys(node->ikeys[child_idx], key) <= 0)
                 {
                     child_idx++;
                     child = node->children[child_idx];
@@ -1045,6 +1045,8 @@ namespace bpt_occ
         Node *new_root = old_root->children[0];
         root_.store(new_root, std::memory_order_release);
 
+        old_root->children[0] = nullptr;
+
         // Free old root (but don't free values)
         old_root->num_keys = 0;
         schedule_for_deletion(old_root);
@@ -1055,41 +1057,39 @@ namespace bpt_occ
         Node *child = parent->children[index];
         Node *new_node = create_node(child->is_leaf);
 
-        // Calculate mid point
-        int mid = degree_ / 2;
+        // Leaf splits copy their separator into the parent. Interior splits
+        // move the pivot out: no key or child may belong to both halves.
+        const int mid = child->is_leaf ? degree_ / 2 : child->num_keys / 2;
+        const int right_start = mid + (child->is_leaf ? 0 : 1);
+        new_node->num_keys = child->num_keys - right_start;
+        void *middle_key = nullptr;
+        if (!child->is_leaf)
+        {
+            middle_key = child->ikeys[mid];
+            child->ikeys[mid] = nullptr;
+        }
 
-        // Set up new node
-        new_node->num_keys = child->num_keys - mid;
-
-        // Copy keys/values from right half of child to new node
-        for (int i = 0; i < new_node->num_keys; i++)
+        for (int i = 0; i < new_node->num_keys; ++i)
         {
             if (child->is_leaf)
             {
-                new_node->keys[i] = child->keys[mid + i];
-                new_node->values[i] = child->values[mid + i];
-                // Nullify in child
-                child->keys[mid + i] = nullptr;
-                child->values[mid + i] = nullptr;
+                new_node->keys[i] = child->keys[right_start + i];
+                new_node->values[i] = child->values[right_start + i];
+                child->keys[right_start + i] = nullptr;
+                child->values[right_start + i] = nullptr;
             }
             else
             {
-                new_node->ikeys[i] = child->ikeys[mid + i];
+                new_node->ikeys[i] = child->ikeys[right_start + i];
+                child->ikeys[right_start + i] = nullptr;
             }
         }
-
-        // If internal node, copy children pointers
         if (!child->is_leaf)
         {
-            for (int i = 0; i <= new_node->num_keys; i++)
+            for (int i = 0; i <= new_node->num_keys; ++i)
             {
-                new_node->children[i] = child->children[mid + i];
-            }
-
-            // Nullify in child
-            for (int i = 0; i < new_node->num_keys; i++)
-            {
-                child->ikeys[mid + i] = nullptr;
+                new_node->children[i] = child->children[right_start + i];
+                child->children[right_start + i] = nullptr;
             }
         }
 
@@ -1122,7 +1122,7 @@ namespace bpt_occ
         // Add new child to parent
         parent->children[index + 1] = new_node;
 
-        parent->ikeys[index] = copy_key(key_at(new_node, 0));
+        parent->ikeys[index] = child->is_leaf ? copy_key(key_at(new_node, 0)) : middle_key;
 
         parent->num_keys++;
     }

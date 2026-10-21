@@ -97,9 +97,25 @@ $(BIN_DIR)/reclamation-test: tests/reclamation.cc runtime/Reclamation.cc runtime
 $(BIN_DIR)/reclamation-stress: tests/reclamation_stress.cc $(filter-out $(OBJ_DIR)/crest_server.o,$(SERVER_OBJ)) $(OBJ_DIR)/datastructures/$(DS).o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
-test-reclamation: $(BIN_DIR)/reclamation-test $(BIN_DIR)/reclamation-stress
+$(BIN_DIR)/reclamation-ds: tests/reclamation_ds.cc $(filter-out $(OBJ_DIR)/crest_server.o,$(SERVER_OBJ)) $(OBJ_DIR)/datastructures/$(DS).o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
+
+test-reclamation: $(BIN_DIR)/reclamation-test $(BIN_DIR)/reclamation-ds $(BIN_DIR)/reclamation-stress
 	LD_LIBRARY_PATH="/home/vin/jemalloc/lib:$${LD_LIBRARY_PATH:-}" $(BIN_DIR)/reclamation-test
+	LD_LIBRARY_PATH="/home/vin/jemalloc/lib:$${LD_LIBRARY_PATH:-}" $(BIN_DIR)/reclamation-ds
 	LD_LIBRARY_PATH="/home/vin/jemalloc/lib:$${LD_LIBRARY_PATH:-}" $(BIN_DIR)/reclamation-stress
+	@if [ $(ENABLE_LLVM_PASS) -eq 1 ]; then \
+		LD_LIBRARY_PATH="/home/vin/jemalloc/lib:$${LD_LIBRARY_PATH:-}" $(BIN_DIR)/reclamation-stress 10 active-tags; \
+	fi
+
+# Keep baseline/OBASE objects separate while reusing compiler tools per mode.
+test-reclamation-all:
+	@set -e; for mode in 0 1; do \
+		for ds in $(ALL_DS); do \
+			$(MAKE) test-reclamation DS=$$ds ENABLE_LLVM_PASS=$$mode \
+				BIN_DIR="$(BIN_DIR)/reclamation-matrix-$$mode"; \
+		done; \
+	done
 
 # `all` builds the whole pipeline set; the binary links only the selected
 # structure (the other objects are compile checks, not payload).
@@ -175,4 +191,4 @@ clean:
 # delete them after the build; they are the pipeline's debugging surface.
 .SECONDARY: $(DS_VIS) $(addprefix $(LLVM_DIR)/,$(addsuffix .ll,$(PIPELINE_DS)))
 
-.PHONY: all clean converter test-compiler test-reclamation
+.PHONY: all clean converter test-compiler test-reclamation test-reclamation-all

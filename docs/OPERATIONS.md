@@ -57,9 +57,14 @@ pointer or a second free after an address has already been reclaimed/reused.
 Bookkeeping adds synchronization and may temporarily retain retired memory;
 performance comparisons should rebuild both modes and rerun their trials.
 
-Run `make test-reclamation DS=bpt_mass` for lifetime/diagnostic tests and a
-concurrent same-key GET/SET regression. Use a separate `BIN_DIR` when testing
-`ENABLE_LLVM_PASS=0` to keep the two builds independent.
+Run `make test-reclamation DS=bpt_mass` (or any other `DS`) for lifetime and
+diagnostic checks, borrowed values held across concurrent updates/deletes,
+split/destruction coverage, and concurrent same-key GET/SET stress. OBASE
+builds also run the stress test with TAG tracking active; this exercises TAG
+cleanup without starting the background migrator. Use a separate `BIN_DIR`
+when testing `ENABLE_LLVM_PASS=0` to keep the two builds independent.
+`make -j6 test-reclamation-all` runs these checks for all ten structures in
+both modes, using separate build directories automatically.
 
 ## Run
 

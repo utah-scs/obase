@@ -1634,6 +1634,7 @@ namespace trie_art
     bool dict::scan(void *startKey, size_t startKeyLen, void *endKey, size_t endKeyLen,
                     std::vector<std::pair<void *, void *>> &results, size_t maxResults)
     {
+        reclamation::Scope reclamationScope;
         // Early return if maxResults is 0
         if (maxResults == 0)
             return false;

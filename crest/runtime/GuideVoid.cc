@@ -39,11 +39,13 @@ Guide<void> &Guide<void>::operator=(void *p)
     if (p != nullptr)
     {
         uintptr_t old_val, new_val;
+        // Pair publication of initialized payloads with touchAndGetAddr's
+        // acquire load, including readers that do not take the writer's lock.
         do
         {
             old_val = __atomic_load_n(&ptr, __ATOMIC_RELAXED);
             new_val = (old_val & ~(ADDRESS_MASK | HEAP_ID_MASK)) | reinterpret_cast<uintptr_t>(p);
-        } while (!__atomic_compare_exchange_n(&ptr, &old_val, new_val, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+        } while (!__atomic_compare_exchange_n(&ptr, &old_val, new_val, true, __ATOMIC_RELEASE, __ATOMIC_RELAXED));
         soda_.Set1((((uint64_t)&ptr - (uint64_t)global_addr_start) / 8));
         touchAndGetAddr();
     }

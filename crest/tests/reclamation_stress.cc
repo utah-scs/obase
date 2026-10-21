@@ -7,6 +7,11 @@
 int main(int argc, char **argv)
 {
     const int seconds = argc > 1 ? std::stoi(argv[1]) : 10;
+    const bool activeTags = argc > 2 && std::string(argv[2]) == "active-tags";
+    // Exercise the same TAG cleanup path used during migration, without a
+    // background collector or timing-dependent migration handshake.
+    if (activeTags)
+        g_scope_guard_state.store(ScopeGuardState::ACTIVE, std::memory_order_release);
     spdlog::set_level(spdlog::level::warn);
     KeyValueStore store;
     std::vector<std::string> keys;
@@ -53,6 +58,6 @@ int main(int argc, char **argv)
     for (auto &thread : workers) thread.join();
     reclamation::drain();
     std::cout << "reads=" << reads << " writes=" << writes << " failed=" << failed
-              << " pending=" << reclamation::pending() << std::endl;
+              << " pending=" << reclamation::pending() << " active_tags=" << activeTags << std::endl;
     return failed ? 1 : 0;
 }

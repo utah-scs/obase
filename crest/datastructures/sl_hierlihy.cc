@@ -232,9 +232,15 @@ namespace sl_hierlihy
                     // leaks ATC)
                     void *old_val = static_cast<void *>(node_found->val); // pins via ATC
                     MemType old_type = node_found->val.getMemType();
-                    node_found->val = jem_malloc(val_len);
-                    node_found->val.setHeapId(0);
-                    memcpy(node_found->val, val, val_len);
+                    void *replacement = jem_malloc(val_len);
+                    if (!replacement)
+                    {
+                        UNLOCK(ND_GET_LOCK(node_found));
+                        return 0;
+                    }
+                    // Optimistic readers must never see a partially copied value.
+                    memcpy(replacement, val, val_len);
+                    node_found->val = replacement;
                     g_sama->free(old_val, old_type);
 
                     // Release the lock
@@ -411,6 +417,7 @@ namespace sl_hierlihy
     // Length implementation
     int dict::length()
     {
+        reclamation::Scope reclamationScope;
         int count = 0;
         sl_marked *node;
 

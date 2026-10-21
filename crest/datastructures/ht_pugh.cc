@@ -213,14 +213,15 @@ int LinkedListPugh::insert(const void *key, size_t key_size,
         // concurrent readers skip their ATC decrement (permanent leak).
         void *old_val = static_cast<void *>(right->val); // pins via ATC
         MemType old_type = right->val.getMemType();
-        right->val = jem_malloc(val_size);
-        right->val.setHeapId(0);
-        if (!right->val)
+        void *replacement = jem_malloc(val_size);
+        if (!replacement)
         {
             perror("jem_malloc @ insert update");
             exit(1);
         }
-        memcpy(right->val, val, val_size);
+        // Readers do not take this node's lock. Publish only complete values.
+        memcpy(replacement, val, val_size);
+        right->val = replacement;
         right->val_size = val_size;
         g_sama->free(old_val, old_type);
 
@@ -393,6 +394,7 @@ namespace ht_pugh
 
     size_t dict::length()
     {
+        reclamation::Scope reclamationScope;
         size_t count = 0;
         for (size_t i = 0; i < maxhtlength; i++)
         {

@@ -231,6 +231,7 @@ namespace sl_fraser
     // Get the number of elements in the list
     int dict::length()
     {
+        reclamation::Scope reclamationScope;
         int count = 0;
         struct sl_node *node;
 
