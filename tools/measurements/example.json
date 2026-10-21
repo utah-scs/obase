@@ -1,0 +1,29 @@
+{
+  "structure": "bpt_mass",
+  "binaries": {
+    "baseline": "/path/to/build-baseline/crest-server",
+    "obase": "/path/to/build-obase/crest-server"
+  },
+  "load_trace": "/path/to/preload.zst",
+  "replay_trace": "/path/to/replay.zst",
+  "expected_preload_keys": 4467952,
+  "replay_rows": 10000000,
+  "expected_counts": {"GET": 7677899, "SET": 2322101, "DEL": 0},
+  "incr_rows": 0,
+  "allow_misses": false,
+  "dram_gib_order": [2, 4, 8],
+  "threads": 6,
+  "server_cpus": "1,5,9,13,17,21,25",
+  "client_cpus": "29,33,37,41,45,49",
+  "memory_node": 1,
+  "memory_swap_max_bytes": 103079215104,
+  "swap_backend": "/dev/pmem1",
+  "scan_seconds": 120,
+  "profiles": ["cpu", "samples", "uncore"],
+  "perf_sudo": true,
+  "sample_period": 4000,
+  "ldlat": 30,
+  "interval": 1,
+  "integrity_interval": 5,
+  "environment": {"LD_LIBRARY_PATH": "/path/to/jemalloc/lib"}
+}

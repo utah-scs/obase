@@ -1,3 +1,4 @@
+#include "crest_protocol.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -75,6 +76,7 @@ struct KeyValue
 // Global variables for thread synchronization
 std::mutex progress_mutex;
 std::atomic<size_t> total_inserts_completed(0);
+std::atomic<bool> load_error(false);
 
 // Implementation of zstdReader functions
 zstd_reader *create_zstd_reader(const char *trace_path)
@@ -394,8 +396,7 @@ void worker_thread(int thread_id,
 {
 
     // Create a thread-local random number generator
-    std::random_device rd;
-    std::mt19937 gen(rd() + thread_id); // Use thread_id to ensure different seeds
+    std::mt19937 gen(12345 + thread_id); // Use thread_id to ensure different seeds
 
     // Connect to the KV store server
     int sockfd;
@@ -414,6 +415,7 @@ void worker_thread(int thread_id,
             std::lock_guard<std::mutex> lock(progress_mutex);
             std::cerr << "Thread " << thread_id << ": Failed to connect to server" << std::endl;
         }
+        load_error.store(true);
         return;
     }
 
@@ -440,24 +442,14 @@ void worker_thread(int thread_id,
         std::string command = "set " + kv.key + " " + value;
         free(value);
 
-        // Send the command to the server
-        if (send(sockfd, (command + "\r\n").c_str(), command.length() + 2, 0) == -1)
+        std::string response;
+        if (!exchangeCommand(sockfd, command, response) || response != "OK")
         {
             std::lock_guard<std::mutex> lock(progress_mutex);
-            std::cerr << "Thread " << thread_id << ": Failed to send command" << std::endl;
+            std::cerr << "Thread " << thread_id << ": SET failed for key " << kv.key << std::endl;
+            load_error.store(true);
             break;
         }
-
-        // Read the response
-        char buffer[4096];
-        int bytesReceived = read(sockfd, buffer, sizeof(buffer) - 1);
-        if (bytesReceived <= 0)
-        {
-            std::lock_guard<std::mutex> lock(progress_mutex);
-            std::cerr << "Thread " << thread_id << ": Failed to receive response or connection closed" << std::endl;
-            break;
-        }
-        buffer[bytesReceived] = '\0';
 
         // Add a small sleep to avoid flooding the server
         usleep(10);
@@ -645,8 +637,7 @@ int main(int argc, char *argv[])
               << ", Values = " << bytesToHumanReadable(total_value_bytes) << std::endl;
 
     // Shuffle the key-value pairs
-    std::random_device rd;
-    std::mt19937 g(rd());
+    std::mt19937 g(12345);
     std::shuffle(kv_pairs.begin(), kv_pairs.end(), g);
 
     std::cout << "Shuffled " << kv_pairs.size() << " keys. Starting insertion..." << std::endl;
@@ -697,5 +688,6 @@ int main(int argc, char *argv[])
     std::cout << "Average throughput: " << (total_inserts_completed.load() * 1000.0) / insertion_duration
               << " operations/second" << std::endl;
 
-    return 0;
+    return !load_error.load() && !kv_pairs.empty() &&
+           total_inserts_completed.load() == kv_pairs.size() ? 0 : 1;
 }

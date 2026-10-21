@@ -9,7 +9,8 @@ Measurement and experiment helpers for CrestDB/OBASE. Build the C tools with
 | `memoryPressure` | Allocate and pin memory to create memory pressure for reclamation experiments: `./memoryPressure.x <GiB>`. |
 | `monitor_tpp.sh` | Periodically sample TPP/NUMA promotion-demotion counters from vmstat: `./monitor_tpp.sh <interval>`. |
 | `colocateExp` | Multi-tenant consolidation experiment driver (thesis E5): see `run_colocateExp.sh`. |
-| `perf_crest.sh` / `perf_mem.sh` | Wrap `perf stat` around a running crest-server (CPU / memory event sets). Results land in `perf_results.txt`. |
+| `measure.py` | Shared trace collection, baseline/OBASE DRAM sweeps, CSV/JSON reports, and memory/swap plots. See [measurement workflow](measurements/README.md). |
+| `perf_crest.sh` / `perf_mem.sh` | Thin aliases for `measure.py capture` with CPU or memory sampling presets. Use `--pid PID --out DIR -- CLIENT ...`; the old start/stop interface is retired. |
 | `perf_flame.sh` | Periodic `perf record` samples of a running crest-server for flame graphs. |
 | `verify_migration.sh [names]` | Per-structure migration integrity check: builds `DS=<name>`, loads via YCSB, drives NEW→COLD→HOT migration cycles at a 5s scan interval, and re-reads known keys after each direction, failing if any byte changed. ~2 min per structure. |
 | `verify_rss_workloadA.sh [names]` | Per-structure RSS-reduction check under YCSB-A (50/50 read/update, 1M records, 60s windows): requires bulk demotion, MADV_PAGEOUT rounds, an RSS drop, byte-exact re-reads of known keys, and zero runtime errors. ~11 min per structure. |

@@ -92,8 +92,13 @@ statistics at completion.
   `tools/overhead_cpu.sh` measures server CPU per operation, which resolves
   instrumentation cost even when throughput is bounded by client
   round-trips.
-- `tools/perf_crest.sh`, `tools/perf_mem.sh`, `tools/perf_flame.sh` wrap
-  `perf` around a running server.
+- Use [`tools/measure.py`](../tools/measurements/README.md) for trace sweeps and
+  shared collection of CPU counters, DRAM/PMEM samples, swap-in/out, faults, and
+  memory usage, with CSV/JSON reports and plots. `perf_crest.sh` and `perf_mem.sh`
+  delegate to it; their former start/stop interface is retired.
+- `tools/perf_flame.sh` remains a separate flame-graph profiler. The RSS, TPP,
+  overhead, and multi-tenant helpers serve their specialized experiments; trace
+  sweeps use the shared collectors instead of copying those implementations.
 
 ## Verification scripts
 

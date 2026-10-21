@@ -1,3 +1,4 @@
+#include "crest_protocol.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -86,6 +87,7 @@ struct ThreadStats
     uint64_t del_ops = 0;
     uint64_t successful_ops = 0;
     uint64_t failed_ops = 0;
+    uint64_t cache_misses = 0;
     double total_latency_us = 0;
     double max_latency_us = 0;
     double min_latency_us = std::numeric_limits<double>::max();
@@ -122,6 +124,7 @@ struct OpStats
     std::atomic<uint64_t> del_ops{0};
     std::atomic<uint64_t> successful_ops{0};
     std::atomic<uint64_t> failed_ops{0};
+    std::atomic<uint64_t> cache_misses{0};
 
     // These require mutex protection for thread safety
     double total_latency_us = 0;
@@ -154,6 +157,7 @@ struct OpStats
         del_ops += thread_stats.del_ops;
         successful_ops += thread_stats.successful_ops;
         failed_ops += thread_stats.failed_ops;
+        cache_misses += thread_stats.cache_misses;
 
         // Also update interval counters
         interval_total_ops += thread_stats.total_ops;
@@ -195,6 +199,7 @@ struct OpStats
         del_ops += other.del_ops.load();
         successful_ops += other.successful_ops.load();
         failed_ops += other.failed_ops.load();
+        cache_misses += other.cache_misses.load();
 
         std::lock_guard<std::mutex> lock(latency_mutex);
         std::lock_guard<std::mutex> other_lock(other.latency_mutex);
@@ -776,15 +781,8 @@ std::pair<bool, int> performGetOperation(int sockfd, const std::string &key, Thr
 
     std::string command = "get " + key;
 
-    if (send(sockfd, (command + "\r\n").c_str(), command.length() + 2, 0) == -1)
-    {
-        std::cerr << "Thread " << stats.thread_id << ": Failed to send GET command: " << command << std::endl;
-        return {false, -1};
-    }
-
-    // char buffer[8192];
-    char buffer[65536];
-    int bytesReceived = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+    std::string response;
+    bool received = exchangeCommand(sockfd, command, response);
 
     auto end_time = std::chrono::high_resolution_clock::now();
     int64_t latency_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
@@ -798,24 +796,20 @@ std::pair<bool, int> performGetOperation(int sockfd, const std::string &key, Thr
     stats.min_latency_us = std::min(stats.min_latency_us, latency_us_d);
     stats.add_latency(GET, latency_us);
 
-    if (bytesReceived <= 0)
+    if (!received || response.empty())
     {
+        if (received && response.empty())
+            logExchangeFailure("empty_get", sockfd, 0, command, response);
         std::cerr << "Thread " << stats.thread_id << ": Failed to receive response for GET: " << command << std::endl;
         stats.failed_ops++;
         return {false, -1};
     }
 
-    buffer[bytesReceived] = '\0';
-
-    // if (strncmp(buffer, "NOT_FOUND", 9) == 0 || strncmp(buffer, "ERR", 3) == 0)
-    // {
-    //     // Key not found - This is expected in some cases
-    //     stats.failed_ops++;
-    //     return false;
-    // }
+    if (response == "ERR")
+        stats.cache_misses++;
 
     stats.successful_ops++;
-    return {true, bytesReceived};
+    return {true, static_cast<int>(response.size())};
 }
 
 // Function to perform a SET operation
@@ -824,17 +818,16 @@ bool performSetOperation(int sockfd, const std::string &key, size_t size, Thread
     auto start_time = std::chrono::high_resolution_clock::now();
 
     char *randomValue = generateRandomString(size);
-    std::string command = "set " + key + " 0 0 " + std::to_string(size) + "\r\n" + randomValue;
-    free(randomValue);
-
-    if (send(sockfd, (command + "\r\n").c_str(), command.length() + 2, 0) == -1)
+    if (!randomValue)
     {
-        std::cerr << "Thread " << stats.thread_id << ": Failed to send SET command: " << command << std::endl;
+        stats.failed_ops++;
         return false;
     }
+    std::string command = "set " + key + " " + randomValue;
+    free(randomValue);
 
-    char buffer[65536];
-    int bytesReceived = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+    std::string response;
+    bool received = exchangeCommand(sockfd, command, response);
 
     auto end_time = std::chrono::high_resolution_clock::now();
     int64_t latency_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
@@ -848,21 +841,12 @@ bool performSetOperation(int sockfd, const std::string &key, size_t size, Thread
     stats.min_latency_us = std::min(stats.min_latency_us, latency_us_d);
     stats.add_latency(SET, latency_us);
 
-    if (bytesReceived <= 0)
+    if (!received || response != "OK")
     {
-        std::cerr << "Thread " << stats.thread_id << ": Failed to receive response for SET: " << command << std::endl;
+        std::cerr << "Thread " << stats.thread_id << ": SET failed for key " << key << std::endl;
         stats.failed_ops++;
         return false;
     }
-
-    buffer[bytesReceived] = '\0';
-
-    // Check for successful response
-    // if (strncmp(buffer, "STORED", 6) != 0)
-    // {
-    //     stats.failed_ops++;
-    //     return false;
-    // }
 
     stats.successful_ops++;
     return true;
@@ -873,16 +857,9 @@ bool performDelOperation(int sockfd, const std::string &key, ThreadStats &stats)
 {
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    std::string command = "delete " + key;
-
-    if (send(sockfd, (command + "\r\n").c_str(), command.length() + 2, 0) == -1)
-    {
-        std::cerr << "Thread " << stats.thread_id << ": Failed to send DELETE command: " << command << std::endl;
-        return false;
-    }
-
-    char buffer[65536];
-    int bytesReceived = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+    std::string command = "del " + key;
+    std::string response;
+    bool received = exchangeCommand(sockfd, command, response);
 
     auto end_time = std::chrono::high_resolution_clock::now();
     int64_t latency_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
@@ -896,21 +873,15 @@ bool performDelOperation(int sockfd, const std::string &key, ThreadStats &stats)
     stats.min_latency_us = std::min(stats.min_latency_us, latency_us_d);
     stats.add_latency(DEL, latency_us);
 
-    if (bytesReceived <= 0)
+    if (!received || (response != "OK" && response != "ERR"))
     {
         std::cerr << "Thread " << stats.thread_id << ": Failed to receive response for DELETE: " << command << std::endl;
         stats.failed_ops++;
         return false;
     }
 
-    buffer[bytesReceived] = '\0';
-
-    if (strncmp(buffer, "NOT_FOUND", 9) == 0 || strncmp(buffer, "ERR", 3) == 0)
-    {
-        // Key not found - This might be expected
-        stats.failed_ops++;
-        return false;
-    }
+    if (response == "ERR")
+        stats.cache_misses++;
 
     stats.successful_ops++;
     return true;
@@ -1068,11 +1039,11 @@ void worker_thread(int thread_id,
     TraceOperation op;
     while (!thread_error.load() && op_queue.pop(op))
     {
-        bool success = false;
+        bool success = true;
 
         if (op.op_type == GET)
         {
-            std::pair<bool, int> result = performGetOperation(sockfd, op.key, thread_stats);
+            success = performGetOperation(sockfd, op.key, thread_stats).first;
         }
         else if (op.op_type == SET)
         {
@@ -1094,6 +1065,9 @@ void worker_thread(int thread_id,
 
             // success = performSetOperation(sockfd, op.key, 82, thread_stats);
         }
+
+        if (!success)
+            thread_error.store(true);
 
         // to simulate some delay
         // nanosleep((const struct timespec[]){{0, 8000000}}, NULL);
@@ -1159,16 +1133,24 @@ int main(int argc, char *argv[])
         queue_size = std::stoul(argv[5]);
     }
 
+    if (num_threads <= 0 || queue_size == 0)
+    {
+        std::cerr << "Thread count and queue size must be positive\n";
+        return 1;
+    }
+
     printf("Using %d worker threads with queue size of %zu operations\n", num_threads, queue_size);
+    printf("Replay limitations: INCR is skipped; TTL and timestamp pacing are ignored.\n");
 
     // Initialize random number generator
-    srand(time(NULL));
+    srand(1); // Reproducible value generation seed for this sweep.
 
     // Create operation queue and control variables
     BoundedQueue<TraceOperation> op_queue(queue_size);
     std::atomic<bool> thread_error(false);
     std::atomic<uint64_t> total_ops(0);
     std::atomic<uint64_t> progress_counter(0);
+    std::atomic<bool> reader_finished(false);
     std::mutex stats_mutex;
 
     // Global statistics
@@ -1177,11 +1159,11 @@ int main(int argc, char *argv[])
 
     // Start the trace reader thread
     std::cout << "Starting trace reader thread..." << std::endl;
-    std::thread reader_thread(read_zst_trace,
-                              std::ref(trace_file),
-                              std::ref(op_queue),
-                              std::ref(thread_error),
-                              std::ref(total_ops));
+    std::thread reader_thread([&]
+    {
+        read_zst_trace(trace_file, op_queue, thread_error, total_ops);
+        reader_finished.store(true);
+    });
 
     // Wait a bit for the reader to start parsing the file
     std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -1208,21 +1190,11 @@ int main(int argc, char *argv[])
     int report_count = 0;
     const int report_interval_seconds = 10;
 
-    bool is_reader_finished = false;
-
     // Continue monitoring until all operations are processed or an error occurs
-    while ((progress_counter.load() < total_ops.load() || !is_reader_finished) && !thread_error.load())
+    while ((!reader_finished.load() || progress_counter.load() < total_ops.load()) && !thread_error.load())
     {
         // Sleep for a short time
         std::this_thread::sleep_for(std::chrono::seconds(1));
-
-        // Check if reader thread has finished
-        if (reader_thread.joinable() &&
-            reader_thread.native_handle() &&
-            pthread_tryjoin_np(reader_thread.native_handle(), nullptr) == 0)
-        {
-            is_reader_finished = true;
-        }
 
         // Calculate elapsed time since last report
         auto now = std::chrono::high_resolution_clock::now();
@@ -1286,10 +1258,13 @@ int main(int argc, char *argv[])
 
     // Print overall summary
     printf("\n=== Overall Trace Replay Summary ===\n");
+    printf("Queued trace rows: %lu; processed trace rows: %lu\n",
+           total_ops.load(), progress_counter.load());
     printf("Total operations: %lu\n", global_stats.total_ops.load());
     printf("GET operations: %lu\n", global_stats.get_ops.load());
     printf("SET operations: %lu\n", global_stats.set_ops.load());
     printf("DEL operations: %lu\n", global_stats.del_ops.load());
+    printf("GET/DEL misses (included in completed operations): %lu\n", global_stats.cache_misses.load());
     printf("Successful operations: %lu (%.2f%%)\n",
            global_stats.successful_ops.load(),
            global_stats.total_ops.load() > 0 ? (double)global_stats.successful_ops.load() / global_stats.total_ops.load() * 100 : 0);
@@ -1324,5 +1299,6 @@ int main(int argc, char *argv[])
     printf("Total execution time: %.2f seconds\n", total_seconds);
     printf("Average throughput: %.2f ops/sec\n", global_stats.total_ops.load() / total_seconds);
 
-    return 0;
+    return thread_error.load() || global_stats.failed_ops.load() != 0 ||
+           global_stats.total_ops.load() == 0 ? 1 : 0;
 }

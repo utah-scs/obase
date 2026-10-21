@@ -9,10 +9,10 @@ CXXFLAGS=-std=c++17 -O2 -pthread -Wall
 
 all: twitterZstLoader.x twitterZstReplay.x kvTraceGenerator kvTraceReplay multiThreadedKvTraceReplay.x meta_bench.x
 
-twitterZstLoader.x: twitterZstLoader.cc
+twitterZstLoader.x: twitterZstLoader.cc crest_protocol.h
 	$(CXX) $(CXXFLAGS) -o $@ $< -lzstd
 
-twitterZstReplay.x: twitterZstReplay.cc
+twitterZstReplay.x: twitterZstReplay.cc crest_protocol.h
 	$(CXX) $(CXXFLAGS) -o $@ $< -lzstd
 
 kvTraceGenerator: kvTraceGenerator.cc
